@@ -1,0 +1,292 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #070612;
+  --bg-2: #0b0a1a;
+  --line: rgba(167, 139, 250, 0.12);
+  --line-strong: rgba(167, 139, 250, 0.22);
+  --violet: #a78bfa;
+  --violet-2: #8b5cf6;
+  --magenta: #d946ef;
+  --cyan: #67e8f9;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: #ececf3;
+}
+
+body {
+  font-family: "Geist", ui-sans-serif, system-ui;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.font-num {
+  font-family: "JetBrains Mono", ui-monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.num-stable {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(167, 139, 250, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(167, 139, 250, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.bg-noise {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.6 0 0 0 0 0.5 0 0 0 0 0.9 0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+.glow-orb {
+  background: radial-gradient(closest-side, rgba(167, 139, 250, 0.55), rgba(139, 92, 246, 0.18) 40%, transparent 70%);
+  filter: blur(20px);
+}
+
+.iri-orb {
+  background:
+    radial-gradient(40% 60% at 30% 30%, rgba(217, 70, 239, 0.55), transparent 60%),
+    radial-gradient(60% 60% at 70% 60%, rgba(103, 232, 249, 0.45), transparent 60%),
+    radial-gradient(closest-side, rgba(167, 139, 250, 0.85), transparent 70%);
+  filter: blur(8px);
+}
+
+.glass {
+  background: linear-gradient(180deg, rgba(26, 24, 56, 0.55), rgba(11, 10, 26, 0.55));
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.glass-strong {
+  background: linear-gradient(180deg, rgba(39, 36, 78, 0.7), rgba(11, 10, 26, 0.85));
+  border: 1px solid var(--line-strong);
+  backdrop-filter: blur(20px);
+}
+
+.grad-border {
+  position: relative;
+}
+
+.grad-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.6), rgba(167, 139, 250, 0.4) 35%, rgba(103, 232, 249, 0.4) 70%, rgba(167, 139, 250, 0.2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.text-iri {
+  background: linear-gradient(92deg, #ffffff 0%, #d8c9ff 30%, #a78bfa 55%, #f0abfc 80%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  will-change: transform;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #a78bfa, #7c3aed);
+  box-shadow:
+    0 8px 30px -8px rgba(139, 92, 246, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-ghost {
+  border: 1px solid var(--line-strong);
+}
+
+.btn-ghost:hover {
+  background: rgba(167, 139, 250, 0.08);
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 6px rgba(74, 222, 128, 0);
+  }
+}
+
+.pulse-dot {
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(20px, -10px, 0) rotate(180deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(360deg);
+  }
+}
+
+.drift-slow {
+  animation: drift 22s ease-in-out infinite;
+}
+
+.drift-med {
+  animation: drift 14s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(167, 139, 250, 0.4) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+
+@keyframes flowDash {
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+.flow-dash {
+  stroke-dasharray: 4 6;
+  animation: flowDash 6s linear infinite;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.slide-in {
+  animation: slideIn 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 200ms ease-out;
+}
+
+@keyframes routeFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.route-fade {
+  animation: routeFade 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tab-active {
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.18), rgba(167, 139, 250, 0.06));
+  border-color: rgba(167, 139, 250, 0.45);
+  color: white;
+}
+
+.tab-active .tab-num {
+  color: #a78bfa;
+}
+
+.ticker-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+
+.codeblock {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.codeblock .tk-c {
+  color: #6b7280;
+}
+
+.codeblock .tk-k {
+  color: #c4b5fd;
+}
+
+.codeblock .tk-f {
+  color: #67e8f9;
+}
+
+.codeblock .tk-s {
+  color: #f0abfc;
+}
+
+.codeblock .tk-n {
+  color: #fbbf24;
+}
+
+.codeblock .tk-p {
+  color: #94a3b8;
+}
+
+.codeblock .tk-v {
+  color: #e5e7eb;
+}
+
+::selection {
+  background: rgba(167, 139, 250, 0.5);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #07060f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2750;
+  border-radius: 8px;
+}
