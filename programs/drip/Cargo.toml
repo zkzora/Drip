@@ -9,6 +9,7 @@ crate-type = ["cdylib", "lib"]
 name = "drip"
 
 [features]
+idl-build = ["anchor-lang/idl-build"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []

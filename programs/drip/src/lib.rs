@@ -1,8 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{
-    program::invoke_signed,
-    system_instruction,
-};
+use anchor_lang::solana_program::{program::invoke_signed, system_instruction};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkgPj3GVjKqLx");
 
@@ -31,6 +28,11 @@ pub mod drip {
         );
 
         let clock = Clock::get()?;
+        let rent = Rent::get()?;
+        let escrow_rent_reserve = rent.minimum_balance(0);
+        let escrow_funding_amount = deposited_amount
+            .checked_add(escrow_rent_reserve)
+            .ok_or(DripError::MathError)?;
         require!(
             expiration_time == 0 || expiration_time > clock.unix_timestamp,
             DripError::InvalidExpiration
@@ -44,7 +46,7 @@ pub mod drip {
             &system_instruction::transfer(
                 &ctx.accounts.payer.key(),
                 &ctx.accounts.escrow.key(),
-                deposited_amount,
+                escrow_funding_amount,
             ),
             &[
                 ctx.accounts.payer.to_account_info(),
@@ -57,8 +59,6 @@ pub mod drip {
         let stream = &mut ctx.accounts.stream_state;
         stream.payer = ctx.accounts.payer.key();
         stream.receiver = ctx.accounts.receiver.key();
-        stream.mint = Pubkey::default();
-        stream.escrow = ctx.accounts.escrow.key();
         stream.stream_id = stream_id;
         stream.deposited_amount = deposited_amount;
         stream.withdrawn_amount = 0;
@@ -105,13 +105,19 @@ pub mod drip {
             .checked_sub(stream.withdrawn_amount)
             .ok_or(DripError::MathError)?;
         require!(withdrawable > 0, DripError::NothingToWithdraw);
+        let available =
+            escrow_lamports_available_for_stream(&ctx.accounts.escrow.to_account_info())?;
+        require!(
+            withdrawable <= available,
+            DripError::InsufficientEscrowFunds
+        );
 
         transfer_from_escrow(
             &ctx.accounts.escrow.to_account_info(),
             &ctx.accounts.receiver.to_account_info(),
             &ctx.accounts.system_program.to_account_info(),
             stream.key(),
-            stream.escrow,
+            ctx.accounts.escrow.key(),
             stream.escrow_bump,
             withdrawable,
         )?;
@@ -210,37 +216,44 @@ pub mod drip {
         let receiver_due = unlocked
             .checked_sub(stream.withdrawn_amount)
             .ok_or(DripError::MathError)?;
+        let mut available =
+            escrow_lamports_available_for_stream(&ctx.accounts.escrow.to_account_info())?;
+        let receiver_payment = receiver_due.min(available);
 
-        if receiver_due > 0 {
+        if receiver_payment > 0 {
             transfer_from_escrow(
                 &ctx.accounts.escrow.to_account_info(),
                 &ctx.accounts.receiver.to_account_info(),
                 &ctx.accounts.system_program.to_account_info(),
                 stream.key(),
-                stream.escrow,
+                ctx.accounts.escrow.key(),
                 stream.escrow_bump,
-                receiver_due,
+                receiver_payment,
             )?;
             stream.withdrawn_amount = stream
                 .withdrawn_amount
-                .checked_add(receiver_due)
+                .checked_add(receiver_payment)
+                .ok_or(DripError::MathError)?;
+            available = available
+                .checked_sub(receiver_payment)
                 .ok_or(DripError::MathError)?;
         }
 
-        let remaining = stream
+        let remaining_unpaid_stream_funds = stream
             .deposited_amount
             .checked_sub(stream.withdrawn_amount)
             .ok_or(DripError::MathError)?;
+        let payer_refund = remaining_unpaid_stream_funds.min(available);
 
-        if remaining > 0 {
+        if payer_refund > 0 {
             transfer_from_escrow(
                 &ctx.accounts.escrow.to_account_info(),
                 &ctx.accounts.payer.to_account_info(),
                 &ctx.accounts.system_program.to_account_info(),
                 stream.key(),
-                stream.escrow,
+                ctx.accounts.escrow.key(),
                 stream.escrow_bump,
-                remaining,
+                payer_refund,
             )?;
         }
 
@@ -251,8 +264,8 @@ pub mod drip {
             stream: stream.key(),
             payer: stream.payer,
             receiver: stream.receiver,
-            receiver_amount: receiver_due,
-            payer_refund: remaining,
+            receiver_amount: receiver_payment,
+            payer_refund,
             timestamp: clock.unix_timestamp,
         });
 
@@ -291,8 +304,6 @@ pub struct Withdraw<'info> {
     pub receiver: Signer<'info>,
     #[account(
         mut,
-        has_one = receiver,
-        has_one = escrow,
         seeds = [b"stream", stream_state.payer.as_ref(), stream_state.receiver.as_ref(), &stream_state.stream_id.to_le_bytes()],
         bump = stream_state.bump
     )]
@@ -312,7 +323,6 @@ pub struct PauseStream<'info> {
     pub payer: Signer<'info>,
     #[account(
         mut,
-        has_one = payer,
         seeds = [b"stream", stream_state.payer.as_ref(), stream_state.receiver.as_ref(), &stream_state.stream_id.to_le_bytes()],
         bump = stream_state.bump
     )]
@@ -324,7 +334,6 @@ pub struct ResumeStream<'info> {
     pub payer: Signer<'info>,
     #[account(
         mut,
-        has_one = payer,
         seeds = [b"stream", stream_state.payer.as_ref(), stream_state.receiver.as_ref(), &stream_state.stream_id.to_le_bytes()],
         bump = stream_state.bump
     )]
@@ -340,9 +349,6 @@ pub struct CancelStream<'info> {
     pub receiver: UncheckedAccount<'info>,
     #[account(
         mut,
-        has_one = payer,
-        has_one = receiver,
-        has_one = escrow,
         seeds = [b"stream", stream_state.payer.as_ref(), stream_state.receiver.as_ref(), &stream_state.stream_id.to_le_bytes()],
         bump = stream_state.bump
     )]
@@ -361,8 +367,6 @@ pub struct CancelStream<'info> {
 pub struct StreamState {
     pub payer: Pubkey,
     pub receiver: Pubkey,
-    pub mint: Pubkey,
-    pub escrow: Pubkey,
     pub stream_id: u64,
     pub deposited_amount: u64,
     pub withdrawn_amount: u64,
@@ -380,7 +384,7 @@ pub struct StreamState {
 }
 
 impl StreamState {
-    pub const LEN: usize = (32 * 4) + (8 * 10) + 4;
+    pub const LEN: usize = (32 * 2) + (8 * 10) + 4;
 }
 
 pub fn calculate_unlocked_amount(stream: &StreamState, current_time: i64) -> Result<u64> {
@@ -435,6 +439,14 @@ fn transfer_from_escrow<'info>(
     )?;
 
     Ok(())
+}
+
+fn escrow_lamports_available_for_stream(escrow: &AccountInfo) -> Result<u64> {
+    let rent_exempt_minimum = Rent::get()?.minimum_balance(escrow.data_len());
+    escrow
+        .lamports()
+        .checked_sub(rent_exempt_minimum)
+        .ok_or(error!(DripError::InsufficientEscrowFunds))
 }
 
 #[event]
@@ -509,6 +521,8 @@ pub enum DripError {
     AlreadyCancelled,
     #[msg("No funds available to withdraw")]
     NothingToWithdraw,
+    #[msg("Escrow does not have enough stream funds available")]
+    InsufficientEscrowFunds,
     #[msg("Math overflow or underflow")]
     MathError,
 }
