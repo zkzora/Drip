@@ -1,8 +1,9 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { useDripWallet } from "@/lib/solana/useDripWallet";
 import {
   AGENT_LOG_DEMO,
   AGENTS,
@@ -39,6 +40,8 @@ const fmtDuration = (sec) => {
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 };
+
+const shortWalletAddress = (address) => (address ? `${address.slice(0, 4)}...${address.slice(-4)}` : null);
 
 // Smooth ticker â€” runs on rAF, accumulates from a base + rate*elapsed.
 function useStreamingValue(initial, ratePerSec, running = true) {
@@ -158,6 +161,19 @@ function Sidebar({ active, onChange, streams }: any) {
 }
 
 function Topbar({ route, onNewStream }: any) {
+  const { connected, connecting, publicKeyString, connect, disconnect, providerName } = useDripWallet();
+  const walletLabel = connected ? shortWalletAddress(publicKeyString) : connecting ? "Connecting..." : "Connect Wallet";
+  const walletMeta = connected ? providerName ?? "Solana wallet" : "Solana signer";
+
+  const handleWalletClick = () => {
+    if (connected) {
+      void disconnect?.();
+      return;
+    }
+
+    void connect?.();
+  };
+
   return (
     <div className="sticky top-0 z-30 backdrop-blur-md border-b border-white/5 bg-[#070612]/70">
       <div className="flex items-center gap-3 px-8 py-3.5">
@@ -178,11 +194,11 @@ function Topbar({ route, onNewStream }: any) {
           <button onClick={onNewStream} className="btn-primary rounded-full px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
             <Icon name="plus" size={14} /> New stream
           </button>
-          <button className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-white/10 hover:border-violet-400/30 transition">
+          <button onClick={handleWalletClick} className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-white/10 hover:border-violet-400/30 transition">
             <span className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500" />
             <div className="text-left leading-tight">
-              <div className="text-[12px] text-white">{USER_WALLET_PROFILE.name}</div>
-              <div className="text-[10px] font-mono text-white/45">{USER_WALLET_PROFILE.walletLabel}</div>
+              <div className="text-[12px] text-white">{walletLabel}</div>
+              <div className="text-[10px] font-mono text-white/45">{walletMeta}</div>
             </div>
             <Icon name="chevron-down" size={12} className="text-white/40 ml-1" />
           </button>
@@ -208,10 +224,30 @@ function PageHeader({ eyebrow, title, sub, right }: any) {
   );
 }
 
+function WalletDemoNotice({ error, onConnect }: any) {
+  return (
+    <div className="rounded-2xl border border-violet-400/25 bg-violet-400/[0.06] px-4 py-3 flex items-center gap-3 flex-wrap">
+      <div className="w-8 h-8 rounded-full bg-violet-400/15 text-violet-200 flex items-center justify-center">
+        <Icon name="fingerprint" size={14} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] text-white">Demo data is still visible while your wallet is disconnected.</div>
+        <div className="text-[11.5px] font-mono text-white/45">
+          Connect a Solana wallet before signing transaction actions.
+          {error ? <span className="text-rose-300"> {error}</span> : null}
+        </div>
+      </div>
+      <button onClick={onConnect} className="btn-primary rounded-full px-4 py-2 text-[12.5px] font-medium text-white flex items-center gap-1.5">
+        <Icon name="fingerprint" size={13} /> Connect Wallet
+      </button>
+    </div>
+  );
+}
+
 // =========================================================================
 // DASHBOARD page
 // =========================================================================
-function DashboardPage({ streams, onNewStream, onGoTo }: any) {
+function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletError, onConnectWallet, onRequireWallet }: any) {
   const inSum = streams.filter((s) => s.dir === "in" && s.status === "streaming" && s.token === "USDC").reduce((a, s) => a + s.rate, 0);
   const outSum = streams.filter((s) => s.dir === "out" && s.status === "streaming" && s.token === "USDC").reduce((a, s) => a + s.rate, 0);
   const net = inSum - outSum;
@@ -244,6 +280,8 @@ function DashboardPage({ streams, onNewStream, onGoTo }: any) {
         }
       />
 
+      {!walletConnected && <WalletDemoNotice error={walletError} onConnect={onConnectWallet} />}
+
       {/* Net Flow Engine */}
       <section className="grad-border glass-strong rounded-3xl p-1.5 relative overflow-hidden">
         <div className="absolute -top-24 -right-24 w-72 h-72 iri-orb rounded-full opacity-50" />
@@ -265,10 +303,16 @@ function DashboardPage({ streams, onNewStream, onGoTo }: any) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="btn-ghost rounded-full px-3 py-1.5 text-[12px] text-white/75 flex items-center gap-1.5">
+              <button
+                onClick={() => onRequireWallet("Connect a wallet before withdrawing demo stream funds.")}
+                className={`btn-ghost rounded-full px-3 py-1.5 text-[12px] text-white/75 flex items-center gap-1.5 ${!walletConnected ? "opacity-60" : ""}`}
+              >
                 <Icon name="download" size={12} /> Withdraw
               </button>
-              <button className="btn-ghost rounded-full px-3 py-1.5 text-[12px] text-white/75 flex items-center gap-1.5">
+              <button
+                onClick={() => onRequireWallet("Connect a wallet before swapping stream tokens.")}
+                className={`btn-ghost rounded-full px-3 py-1.5 text-[12px] text-white/75 flex items-center gap-1.5 ${!walletConnected ? "opacity-60" : ""}`}
+              >
                 <Icon name="arrow-left-right" size={12} /> Swap
               </button>
             </div>
@@ -435,7 +479,7 @@ function FlowSparkline({ net }: any) {
 // =========================================================================
 // STREAMS page
 // =========================================================================
-function StreamsPage({ streams, setStreams, onNewStream }: any) {
+function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequireWallet }: any) {
   const [filter, setFilter] = useState("all");
   const [topUpId, setTopUpId] = useState<string | null>(null);
 
@@ -453,6 +497,14 @@ function StreamsPage({ streams, setStreams, onNewStream }: any) {
     setStreams((arr) => arr.map((s) => (s.id === id ? { ...s, status: "completed", rate: 0 } : s)));
   const topUp = (id, amount) =>
     setStreams((arr) => arr.map((s) => (s.id === id ? { ...s, deposit: s.deposit + amount } : s)));
+
+  const guardWallet = (message, action) => {
+    if (!walletConnected) {
+      onRequireWallet(message);
+      return;
+    }
+    action();
+  };
 
   return (
     <div className="space-y-6">
@@ -495,9 +547,10 @@ function StreamsPage({ streams, setStreams, onNewStream }: any) {
           <StreamCard
             key={s.id}
             stream={s}
-            onToggle={() => toggle(s.id)}
-            onCancel={() => cancel(s.id)}
-            onTopUp={() => setTopUpId(s.id)}
+            walletConnected={walletConnected}
+            onToggle={() => guardWallet("Connect a wallet before pausing or resuming a stream.", () => toggle(s.id))}
+            onCancel={() => guardWallet("Connect a wallet before cancelling a stream.", () => cancel(s.id))}
+            onTopUp={() => guardWallet("Connect a wallet before topping up a stream.", () => setTopUpId(s.id))}
           />
         ))}
       </div>
@@ -506,14 +559,14 @@ function StreamsPage({ streams, setStreams, onNewStream }: any) {
         <TopUpModal
           stream={streams.find(s => s.id === topUpId)}
           onClose={() => setTopUpId(null)}
-          onSubmit={(amt) => { topUp(topUpId, amt); setTopUpId(null); }}
+          onSubmit={(amt) => guardWallet("Connect a wallet before topping up a stream.", () => { topUp(topUpId, amt); setTopUpId(null); })}
         />
       )}
     </div>
   );
 }
 
-function StreamCard({ stream, onToggle, onCancel, onTopUp }: any) {
+function StreamCard({ stream, walletConnected, onToggle, onCancel, onTopUp }: any) {
   const running = stream.status === "streaming";
   const elapsed = (Date.now() - stream.started) / 1000;
   const accrued = useStreamingValue(stream.base + elapsed * stream.rate, stream.rate, running);
@@ -589,17 +642,29 @@ function StreamCard({ stream, onToggle, onCancel, onTopUp }: any) {
         <div className="text-[10.5px] font-mono text-white/35">{stream.addr}</div>
         <div className="flex items-center gap-1">
           {!isCompleted && (
-            <button onClick={onTopUp} className="btn-ghost rounded-md h-8 px-2.5 flex items-center gap-1 text-white/75 hover:text-white text-[11px]" title="Top up deposit">
+            <button
+              onClick={onTopUp}
+              className={`btn-ghost rounded-md h-8 px-2.5 flex items-center gap-1 text-white/75 hover:text-white text-[11px] ${!walletConnected ? "opacity-60" : ""}`}
+              title={walletConnected ? "Top up deposit" : "Connect wallet to top up"}
+            >
               <Icon name="plus" size={11} /> Top up
             </button>
           )}
           {!isCompleted && (
-            <button onClick={onToggle} className="btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white" title={running ? "Pause" : "Resume"}>
+            <button
+              onClick={onToggle}
+              className={`btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white ${!walletConnected ? "opacity-60" : ""}`}
+              title={walletConnected ? (running ? "Pause" : "Resume") : "Connect wallet to sign"}
+            >
               <Icon name={running ? "pause" : "play"} size={12} />
             </button>
           )}
           {!isCompleted && (
-            <button onClick={onCancel} className="btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:border-rose-400/30" title="Cancel">
+            <button
+              onClick={onCancel}
+              className={`btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:border-rose-400/30 ${!walletConnected ? "opacity-60" : ""}`}
+              title={walletConnected ? "Cancel" : "Connect wallet to cancel"}
+            >
               <Icon name="x" size={12} />
             </button>
           )}
@@ -678,7 +743,7 @@ function TopUpModal({ stream, onClose, onSubmit }: any) {
 // =========================================================================
 // YIELD page
 // =========================================================================
-function YieldPage({ streams }: any) {
+function YieldPage({ streams, walletConnected, onRequireWallet }: any) {
   const APY = YIELD_DEMO.apy;
   const ESCROW = YIELD_DEMO.escrow;
   const yieldRate = (ESCROW * (APY / 100)) / (365 * 86400);
@@ -715,7 +780,10 @@ function YieldPage({ streams }: any) {
             <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/5 p-5">
               <div className="text-[10.5px] uppercase tracking-[0.18em] text-emerald-200/70 font-mono">Claimable now</div>
               <div className="mt-2 text-[28px] font-num text-emerald-300 num-stable">${fmtUSD(claimable, 4)}</div>
-              <button className="mt-4 w-full btn-primary rounded-full px-4 py-2.5 text-[13px] font-medium flex items-center justify-center gap-2">
+              <button
+                onClick={() => onRequireWallet("Connect a wallet before harvesting yield.")}
+                className={`mt-4 w-full btn-primary rounded-full px-4 py-2.5 text-[13px] font-medium flex items-center justify-center gap-2 ${!walletConnected ? "opacity-60" : ""}`}
+              >
                 <Icon name="sprout" size={14} /> Harvest yield
               </button>
             </div>
@@ -1055,7 +1123,7 @@ function SettingRow({ label, value, tone }: any) {
 // =========================================================================
 // New Stream slide-over (with Smart Rate Converter)
 // =========================================================================
-function NewStreamDrawer({ open, onClose, onCreate }: any) {
+function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWallet }: any) {
   const [recipient, setRecipient] = useState(NEW_STREAM_DEFAULTS.recipient);
   const [token, setToken] = useState(NEW_STREAM_DEFAULTS.token);
   const [amount, setAmount] = useState(NEW_STREAM_DEFAULTS.amount);
@@ -1073,7 +1141,7 @@ function NewStreamDrawer({ open, onClose, onCreate }: any) {
   const perMin = perSec * 60;
 
   const recipientOk = recipient.trim().length > 3;
-  const canCreate = recipientOk && amount > 0 && deposit > 0;
+  const formValid = recipientOk && amount > 0 && deposit > 0;
 
   if (!open) return null;
   return (
@@ -1235,11 +1303,17 @@ function NewStreamDrawer({ open, onClose, onCreate }: any) {
             </div>
             <button onClick={onClose} className="btn-ghost rounded-full px-4 py-2.5 text-[13px] text-white/85">Cancel</button>
             <button
-              disabled={!canCreate}
-              onClick={() => canCreate && onCreate({ recipient, token, amount, period, label, perSec, deposit, policy, budgetCap, autoRevoke })}
-              className={`btn-primary rounded-full px-5 py-2.5 text-[13px] font-medium text-white flex items-center gap-2 ${!canCreate ? "opacity-40 cursor-not-allowed" : ""}`}
+              disabled={walletConnected && !formValid}
+              onClick={() => {
+                if (!walletConnected) {
+                  onConnectWallet?.();
+                  return;
+                }
+                formValid && onCreate({ recipient, token, amount, period, label, perSec, deposit, policy, budgetCap, autoRevoke });
+              }}
+              className={`btn-primary rounded-full px-5 py-2.5 text-[13px] font-medium text-white flex items-center gap-2 ${walletConnected && !formValid ? "opacity-40 cursor-not-allowed" : ""}`}
             >
-              <Icon name="zap" size={13} /> Start streaming
+              <Icon name="zap" size={13} /> {walletConnected ? "Start streaming" : "Connect wallet"}
             </button>
           </div>
         </div>
@@ -1289,7 +1363,33 @@ export default function DashboardApp() {
   const [streams, setStreams] = useState(() => createSeedStreams());
   const [drawer, setDrawer] = useState(false);
   const [route, setRoute] = useState("dashboard");
+  const [walletPrompt, setWalletPrompt] = useState<string | null>(null);
+  const { connected, connect, error: walletError } = useDripWallet();
   const router = useRouter();
+
+  useEffect(() => {
+    if (connected) setWalletPrompt(null);
+  }, [connected]);
+
+  const requireWallet = useCallback(
+    (message = "Connect a wallet before signing this transaction.") => {
+      if (connected) return true;
+      setWalletPrompt(message);
+      void connect?.();
+      return false;
+    },
+    [connected, connect],
+  );
+
+  const connectWallet = useCallback(() => {
+    requireWallet("Connect a wallet to sign Drip transactions.");
+  }, [requireWallet]);
+
+  const openNewStream = useCallback(() => {
+    if (!requireWallet("Connect a wallet before creating a stream.")) return;
+    setDrawer(true);
+  }, [requireWallet]);
+
   const handleRouteChange = (nextRoute) => {
     if (nextRoute === "reports") {
       router.push("/compliance");
@@ -1299,6 +1399,8 @@ export default function DashboardApp() {
   };
 
   const handleCreate = (data) => {
+    if (!requireWallet("Connect a wallet before creating a stream.")) return;
+
     const id = "str_" + Math.floor(Math.random() * 9000 + 1000);
     setStreams((arr) => [
       {
@@ -1329,12 +1431,19 @@ export default function DashboardApp() {
       <Backdrop />
       <Sidebar active={route} onChange={handleRouteChange} streams={streams} />
       <div className="flex-1 min-w-0">
-        <Topbar route={route} onNewStream={() => setDrawer(true)} />
+        <Topbar route={route} onNewStream={openNewStream} />
         <main className="px-8 py-7 max-w-[1480px]">
+          {walletPrompt && !connected && (
+            <div className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-[12.5px] text-amber-100/90 flex items-center gap-2">
+              <Icon name="triangle-alert" size={14} className="text-amber-200" />
+              <span>{walletPrompt}</span>
+              {walletError ? <span className="text-rose-300">{walletError}</span> : null}
+            </div>
+          )}
           <RouteTransition k={route}>
-            {route === "dashboard" && <DashboardPage streams={streams} onNewStream={() => setDrawer(true)} onGoTo={setRoute} />}
-            {route === "streams"   && <StreamsPage   streams={streams} setStreams={setStreams} onNewStream={() => setDrawer(true)} />}
-            {route === "yield"     && <YieldPage     streams={streams} />}
+            {route === "dashboard" && <DashboardPage streams={streams} onNewStream={openNewStream} onGoTo={setRoute} walletConnected={connected} walletError={walletError} onConnectWallet={connectWallet} onRequireWallet={requireWallet} />}
+            {route === "streams"   && <StreamsPage   streams={streams} setStreams={setStreams} onNewStream={openNewStream} walletConnected={connected} onRequireWallet={requireWallet} />}
+            {route === "yield"     && <YieldPage     streams={streams} walletConnected={connected} onRequireWallet={requireWallet} />}
             {route === "history"   && <HistoryPage />}
             {route === "agents"    && <AgentsPage />}
             
@@ -1345,7 +1454,7 @@ export default function DashboardApp() {
           </div>
         </main>
       </div>
-      <NewStreamDrawer open={drawer} onClose={() => setDrawer(false)} onCreate={handleCreate} />
+      <NewStreamDrawer open={drawer} onClose={() => setDrawer(false)} onCreate={handleCreate} walletConnected={connected} onConnectWallet={connectWallet} />
     </div>
   );
 }
