@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { SolanaProvider } from "./SolanaProvider";
+import { JupiterWalletProvider } from "./JupiterWalletProvider";
 
 type AppProvidersProps = {
   children: ReactNode;
 };
 
 export function AppProviders({ children }: AppProvidersProps) {
-  return <SolanaProvider>{children}</SolanaProvider>;
+  return <JupiterWalletProvider>{children}</JupiterWalletProvider>;
 }
 

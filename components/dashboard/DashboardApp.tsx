@@ -52,6 +52,14 @@ const fmtDuration = (sec) => {
 
 const shortWalletAddress = (address) => (address ? `${address.slice(0, 4)}...${address.slice(-4)}` : null);
 
+// Format very small SOL/s values without scientific notation — up to 9 decimals
+const fmtRate = (n: number): string => {
+  if (n === 0) return "0.000000000";
+  // Find first significant digit; use at least 6, up to 9 decimal places
+  const decimals = Math.min(9, Math.max(6, -Math.floor(Math.log10(Math.abs(n))) + 2));
+  return n.toFixed(decimals);
+};
+
 // Rent/deposit minimums for devnet stream creation
 // StreamState account (~164 bytes) + escrow system account rent-exempt minimums
 const RENT_RESERVE_LAMPORTS = 2_039_280;
@@ -1233,8 +1241,8 @@ function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingM
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <YieldStat icon="bot" label="Connected agents" value={`${AGENTS.length}`} sub={`${AGENTS.filter(a => a.status === "active").length} active`} />
-        <YieldStat icon="zap" label="Combined rate" value={`${totalRate.toFixed(6)}/s`} sub="USDC across mesh" />
-        <YieldStat icon="layers" label="Spent this session" value={`$${fmtUSD(totalSpent, 6)}`} sub="ticks live" tone="up" />
+        <YieldStat icon="zap" label="Combined rate" value={`${totalRate.toFixed(9)}/s`} sub="SOL/s across mesh" />
+        <YieldStat icon="layers" label="Simulated session spend" value={`${fmtUSD(totalSpent, 6)} SOL`} sub="demo simulation" tone="up" />
         <YieldStat icon="activity" label="Settlements" value={`${log.length * 24 + AGENT_LOG_DEMO.baseSettlements}`} sub="last hour" />
       </section>
 
@@ -1285,7 +1293,7 @@ function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingM
             <div className="mt-1 text-[14px] font-mono text-white">{budgetSol.toFixed(4)} SOL</div>
           </div>
           <div className="rounded-lg px-3 py-2.5 border border-violet-400/20 bg-violet-400/5">
-            <div className="text-[10px] uppercase tracking-[0.14em] text-violet-300/60 font-mono">Spent</div>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-violet-300/60 font-mono">{isRealStream ? "Spent" : "Demo spend"}</div>
             <div className="mt-1 text-[14px] font-mono text-iri">{liveSpent.toFixed(6)} SOL</div>
           </div>
           <div className="rounded-lg px-3 py-2.5 border border-white/8 bg-white/[0.03]">
@@ -1294,7 +1302,7 @@ function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingM
           </div>
           <div className="rounded-lg px-3 py-2.5 border border-white/8 bg-white/[0.03]">
             <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 font-mono">Rate</div>
-            <div className="mt-1 text-[14px] font-mono text-white">{rateSol.toFixed(7)}/s</div>
+            <div className="mt-1 text-[14px] font-mono text-white">{fmtRate(rateSol)}/s</div>
           </div>
         </div>
 
