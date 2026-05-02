@@ -1,8 +1,10 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Icon } from "@/components/ui/Icon";
+
+const CompliancePage = dynamic(() => import("@/components/compliance/CompliancePage"), { ssr: false });
 import { useDripWallet } from "@/lib/solana/useDripWallet";
 import { useDripStreams } from "@/lib/solana/useDripStreams";
 import BN from "bn.js";
@@ -1157,11 +1159,36 @@ function HistoryRow({ h }: any) {
 // =========================================================================
 // AGENTS page
 // =========================================================================
-function AgentsPage() {
+function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingMockData = true }: any) {
   const [log, setLog] = useState<any[]>([]);
   const [paused, setPaused] = useState(false);
 
-  // Generate live agent micro-payments
+  // Find best real agent stream: prefer policy=agent, active, outgoing
+  const agentStream = useMemo(() => {
+    if (usingMockData || !walletConnected) return null;
+    const candidates = streams.filter(
+      (s: any) => s.dir === "out" && s.status === "streaming"
+    );
+    // Prefer agent policy streams first
+    return candidates.find((s: any) => s.policy === "agent") ?? candidates[0] ?? null;
+  }, [streams, usingMockData, walletConnected]);
+
+  const isRealStream = !!agentStream;
+  const budgetSol = isRealStream ? agentStream.deposit : 0.5;
+  const spentSol  = isRealStream ? agentStream.base : 0;
+  const rateSol   = isRealStream ? agentStream.rate : 0.00001;
+  const remaining = Math.max(0, budgetSol - spentSol);
+  const isRunning = !paused;
+
+  // Live ticking spent amount for the hero panel
+  const liveSpent = useStreamingValue(spentSol, isRealStream ? rateSol : 0, isRealStream && isRunning);
+  const progressPct = budgetSol > 0 ? Math.min(100, (liveSpent / budgetSol) * 100) : 0;
+
+  const explorerUrl = isRealStream && agentStream.pda
+    ? getExplorerAddressUrl(agentStream.pda, SOLANA_CLUSTER)
+    : null;
+
+  // Generate live agent micro-payments (demo simulation - not real on-chain)
   useEffect(() => {
     if (paused) return;
     const id = setInterval(() => {
@@ -1197,8 +1224,8 @@ function AgentsPage() {
             <button onClick={() => setPaused(p => !p)} className="btn-ghost rounded-full px-4 py-2 text-[13px] text-white/85 flex items-center gap-2">
               <Icon name={paused ? "play" : "pause"} size={13} /> {paused ? "Resume" : "Pause"} mesh
             </button>
-            <button className="btn-primary rounded-full px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
-              <Icon name="plus" size={13} /> Connect agent
+            <button onClick={onNewStream} className="btn-primary rounded-full px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
+              <Icon name="plus" size={13} /> Create agent stream
             </button>
           </div>
         }
@@ -1209,6 +1236,100 @@ function AgentsPage() {
         <YieldStat icon="zap" label="Combined rate" value={`${totalRate.toFixed(6)}/s`} sub="USDC across mesh" />
         <YieldStat icon="layers" label="Spent this session" value={`$${fmtUSD(totalSpent, 6)}`} sub="ticks live" tone="up" />
         <YieldStat icon="activity" label="Settlements" value={`${log.length * 24 + AGENT_LOG_DEMO.baseSettlements}`} sub="last hour" />
+      </section>
+
+      {/* Demo-mode quick-create CTA */}
+      {!isRealStream && (
+        <div className="rounded-xl border border-amber-400/25 bg-amber-400/5 px-5 py-4 flex items-center gap-4">
+          <Icon name="triangle-alert" size={16} className="text-amber-300 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-[13px] text-amber-200">Demo simulation</span>
+            <span className="text-[12px] text-white/50 ml-2">- create an AI Compute stream to connect real on-chain budget.</span>
+          </div>
+          <button onClick={onNewStream} className="shrink-0 btn-ghost rounded-full px-3.5 py-1.5 text-[12px] text-amber-200 border border-amber-400/30 hover:border-amber-400/60 flex items-center gap-1.5">
+            <Icon name="plus" size={12} /> Create stream
+          </button>
+        </div>
+      )}
+
+      {/* Drip Research Agent hero panel */}
+      <section className="rounded-2xl glass p-6 border border-violet-400/20">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-violet-400/15 text-violet-200 flex items-center justify-center shrink-0">
+              <Icon name="bot" size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[15px] text-white font-medium">Drip Research Agent</span>
+                {isRealStream ? (
+                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] px-1.5 py-0.5 rounded-full border border-emerald-400/30 text-emerald-300 bg-emerald-400/5">live</span>
+                ) : (
+                  <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] px-1.5 py-0.5 rounded-full border border-amber-400/30 text-amber-300 bg-amber-400/5">demo simulation</span>
+                )}
+              </div>
+              <div className="text-[12px] text-white/45 mt-0.5">Autonomous research, summarization, and publish pipeline - paid per inference token via Drip</div>
+            </div>
+          </div>
+          {isRealStream && (
+            <div className="text-right shrink-0">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 font-mono">Stream ID</div>
+              <div className="text-[11px] font-mono text-violet-300/80 mt-0.5">{agentStream.id?.slice(0, 12)}...</div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="rounded-lg px-3 py-2.5 border border-white/8 bg-white/[0.03]">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 font-mono">Budget</div>
+            <div className="mt-1 text-[14px] font-mono text-white">{budgetSol.toFixed(4)} SOL</div>
+          </div>
+          <div className="rounded-lg px-3 py-2.5 border border-violet-400/20 bg-violet-400/5">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-violet-300/60 font-mono">Spent</div>
+            <div className="mt-1 text-[14px] font-mono text-iri">{liveSpent.toFixed(6)} SOL</div>
+          </div>
+          <div className="rounded-lg px-3 py-2.5 border border-white/8 bg-white/[0.03]">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 font-mono">Remaining</div>
+            <div className="mt-1 text-[14px] font-mono text-emerald-300">{(isRealStream ? Math.max(0, budgetSol - liveSpent) : remaining).toFixed(4)} SOL</div>
+          </div>
+          <div className="rounded-lg px-3 py-2.5 border border-white/8 bg-white/[0.03]">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 font-mono">Rate</div>
+            <div className="mt-1 text-[14px] font-mono text-white">{rateSol.toFixed(7)}/s</div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] text-white/40 font-mono">Budget utilization</span>
+            <span className="text-[11px] text-white/55 font-mono">{progressPct.toFixed(1)}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-1000"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* CTA links */}
+        <div className="mt-5 flex items-center gap-3 flex-wrap">
+          <button onClick={onNewStream} className="btn-ghost rounded-full px-3.5 py-1.5 text-[12px] text-violet-200 border border-violet-400/25 hover:border-violet-400/50 flex items-center gap-1.5">
+            <Icon name="plus" size={12} /> Create Agent Stream
+          </button>
+          <span className="text-[12px] text-white/30 border border-white/8 rounded-full px-3.5 py-1.5 flex items-center gap-1.5">
+            <Icon name="file-text" size={12} className="text-white/25" /> View Compliance Export
+          </span>
+          {explorerUrl ? (
+            <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost rounded-full px-3.5 py-1.5 text-[12px] text-cyan-300 border border-cyan-400/25 hover:border-cyan-400/50 flex items-center gap-1.5">
+              <Icon name="external-link" size={12} /> Open Stream on Explorer
+            </a>
+          ) : (
+            <span className="text-[12px] text-white/25 border border-white/5 rounded-full px-3.5 py-1.5 flex items-center gap-1.5 cursor-not-allowed">
+              <Icon name="external-link" size={12} /> Open Stream on Explorer
+            </span>
+          )}
+        </div>
       </section>
 
       <section className="grid lg:grid-cols-12 gap-4">
@@ -1237,22 +1358,26 @@ function AgentsPage() {
           </div>
         </div>
 
-        {/* Live terminal log */}
+        {/* Live terminal log - DEMO SIMULATION */}
         <div className="lg:col-span-7 rounded-2xl grad-border glass-strong p-1.5">
           <div className="rounded-[18px] bg-[#06051a] overflow-hidden h-full">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5 bg-white/[0.02]">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-400/60" />
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400/60" />
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/60" />
-              <span className="ml-3 font-mono text-[12px] text-white/55">drip-mesh@eli ~ live settlement log</span>
+              <span className="ml-3 font-mono text-[12px] text-white/55">drip-research-agent ~ inference log</span>
               <span className="ml-auto flex items-center gap-2 text-[10.5px] font-mono text-white/40">
                 <span className={`w-1.5 h-1.5 rounded-full ${paused ? "bg-amber-400" : "bg-emerald-400 pulse-dot"}`} />
                 {paused ? "PAUSED" : "TAILING"}
               </span>
             </div>
             <div className="font-mono text-[12px] p-4 h-[420px] overflow-hidden">
+              {/* Demo banner */}
+              <div className="text-[10.5px] text-amber-300/60 mb-3 pb-2 border-b border-amber-400/15">
+                [DEMO SIMULATION - terminal activity is not real on-chain execution]
+              </div>
               {log.length === 0 && (
-                <div className="text-white/40 text-[11.5px]">$ drip mesh tail --follow ... waiting for settlements</div>
+                <div className="text-white/40 text-[11.5px]">$ drip research-agent tail --follow ... waiting for inference events</div>
               )}
               {log.map((l, i) => (
                 <div
@@ -1263,7 +1388,7 @@ function AgentsPage() {
                   <span className="text-white/35">{l.time}</span>
                   <span className="text-violet-300">{l.agent}</span>
                   <span className="text-white/40">{l.verb}</span>
-                  <span className="text-emerald-300">+{l.amt} USDC</span>
+                  <span className="text-emerald-300">+{l.amt} SOL</span>
                   <span className="text-white/40">-&gt;</span>
                   <span className="text-cyan-300">{l.target}</span>
                   <span className="ml-auto text-white/35">{l.tokens} tok</span>
@@ -1330,7 +1455,7 @@ function SettingRow({ label, value, tone }: any) {
 // =========================================================================
 // New Stream slide-over (with Smart Rate Converter)
 // =========================================================================
-function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWallet, txStatus = "idle", txSig, txError }: any) {
+function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWallet, txStatus = "idle", txSig, txError, prefill }: any) {
   const [recipient, setRecipient] = useState(NEW_STREAM_DEFAULTS.recipient);
   const [token, setToken] = useState("SOL");
   const [amount, setAmount] = useState(0.1);
@@ -1343,6 +1468,18 @@ function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWa
   const [category, setCategory] = useState("OTHER");
   const [expirationEnabled, setExpirationEnabled] = useState(false);
   const [expirationDate, setExpirationDate] = useState("");
+
+  useEffect(() => {
+    if (open && prefill) {
+      if (prefill.amount !== undefined) setAmount(prefill.amount);
+      if (prefill.period !== undefined) setPeriod(prefill.period);
+      if (prefill.deposit !== undefined) setDeposit(prefill.deposit);
+      if (prefill.policy !== undefined) setPolicy(prefill.policy);
+      if (prefill.budgetCap !== undefined) setBudgetCap(prefill.budgetCap);
+      if (prefill.category !== undefined) setCategory(prefill.category);
+      if (prefill.label !== undefined) setLabel(prefill.label);
+    }
+  }, [open, prefill]);
 
   const periodSec = NEW_STREAM_DEFAULTS.periodSeconds[period] ?? 86400;
   const perSec = amount / periodSec;
@@ -1683,7 +1820,6 @@ export default function DashboardApp() {
   const inFlightRef = useRef<Set<string>>(new Set());
   const [cancelConfirm, setCancelConfirm] = useState<any | null>(null);
   const { connected, connect, wallet, publicKey, error: walletError } = useDripWallet();
-  const router = useRouter();
 
   useEffect(() => {
     if (connected) setWalletPrompt(null);
@@ -1703,8 +1839,28 @@ export default function DashboardApp() {
     requireWallet("Connect a wallet to sign Drip transactions.");
   }, [requireWallet]);
 
+  const [drawerPrefill, setDrawerPrefill] = useState<any>(null);
+
   const openNewStream = useCallback(() => {
     if (!requireWallet("Connect a wallet before creating a stream.")) return;
+    setDrawerPrefill(null);
+    setTxStatus("idle");
+    setTxSig(null);
+    setTxError(null);
+    setDrawer(true);
+  }, [requireWallet]);
+
+  const openAgentStream = useCallback(() => {
+    if (!requireWallet("Connect a wallet to create an agent stream.")) return;
+    setDrawerPrefill({
+      amount: 0.01,
+      period: "hour",
+      deposit: 0.5,
+      policy: "agent",
+      budgetCap: 0.25,
+      category: "AI_COMPUTE",
+      label: "Drip Research Agent",
+    });
     setTxStatus("idle");
     setTxSig(null);
     setTxError(null);
@@ -1712,10 +1868,6 @@ export default function DashboardApp() {
   }, [requireWallet]);
 
   const handleRouteChange = (nextRoute) => {
-    if (nextRoute === "reports") {
-      router.push("/compliance");
-      return;
-    }
     setRoute(nextRoute);
   };
 
@@ -1956,8 +2108,8 @@ export default function DashboardApp() {
             {route === "streams"   && <StreamsPage   streams={streams} setStreams={setStreams} onNewStream={openNewStream} walletConnected={connected} onRequireWallet={requireWallet} streamsLoading={streamsLoading} streamsError={streamsError} onRefresh={refreshStreams} onWithdraw={handleWithdraw} onPause={handlePause} onResume={handleResume} onCancelStream={handleCancelStream} streamActions={streamActions} />}
             {route === "yield"     && <YieldPage     streams={streams} walletConnected={connected} onRequireWallet={requireWallet} />}
             {route === "history"   && <HistoryPage />}
-            {route === "agents"    && <AgentsPage />}
-            
+            {route === "agents"    && <AgentsPage streams={streams} walletConnected={connected} onNewStream={openAgentStream} usingMockData={usingMockData} />}
+            {route === "reports"   && <CompliancePage />}
             {route === "settings"  && <SettingsPage />}
           </RouteTransition>
           <div className="text-center text-[11px] font-mono text-white/30 pt-12 pb-12">
@@ -1974,13 +2126,14 @@ export default function DashboardApp() {
       )}
       <NewStreamDrawer
         open={drawer}
-        onClose={() => { setDrawer(false); setTxStatus("idle"); setTxSig(null); setTxError(null); }}
+        onClose={() => { setDrawer(false); setTxStatus("idle"); setTxSig(null); setTxError(null); setDrawerPrefill(null); }}
         onCreate={handleCreate}
         walletConnected={connected}
         onConnectWallet={connectWallet}
         txStatus={txStatus}
         txSig={txSig}
         txError={txError}
+        prefill={drawerPrefill}
       />
     </div>
   );

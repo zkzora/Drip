@@ -55,6 +55,7 @@ function mapToUiStream(stream: DripStream, walletKey: PublicKey): Record<string,
     expirationTime: stream.expirationTime,
     maxBudgetSol: stream.maxBudgetLamports.toNumber() / L,
     totalPausedSeconds: stream.totalPausedSeconds,
+    streamIdNum: stream.streamId.toString(), // on-chain numeric stream ID
   };
 }
 

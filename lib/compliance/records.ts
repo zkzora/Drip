@@ -27,7 +27,8 @@ export function mapUiStreamToComplianceRecord(
   cluster: SolanaCluster,
 ): ComplianceStreamRecord {
   const streamAccount: string = stream.publicKey ?? stream.id ?? "";
-  const streamId: string = stream.id ?? streamAccount;
+  // Use the on-chain numeric stream ID if available; fall back to first 8 chars of PDA
+  const streamId: string = stream.streamIdNum ?? streamAccount.slice(0, 8);
   const direction: "in" | "out" = stream.dir === "out" ? "out" : "in";
 
   // payerPublicKey and receiverPublicKey are the full on-chain addresses, added in Phase 9
