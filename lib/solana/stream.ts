@@ -114,7 +114,6 @@ export async function withdrawFromStream(
   const { wallet, streamPublicKey } = params;
   const program = getDripProgram(wallet);
 
-  const streamAccount = await (program.account as any).streamState.fetch(streamPublicKey);
   const [escrow] = deriveEscrowPda(streamPublicKey);
 
   const signature = await program.methods

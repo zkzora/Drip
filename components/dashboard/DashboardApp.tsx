@@ -7,10 +7,10 @@ import { useDripWallet } from "@/lib/solana/useDripWallet";
 import { useDripStreams } from "@/lib/solana/useDripStreams";
 import BN from "bn.js";
 import { PublicKey } from "@solana/web3.js";
-import { createStream as createSolanaStream } from "@/lib/solana/stream";
+import { createStream as createSolanaStream, withdrawFromStream, pauseStream, resumeStream, cancelStream } from "@/lib/solana/stream";
 import { generateStreamId } from "@/lib/solana/pda";
 import { LAMPORTS_PER_SOL_NUM, SOLANA_CLUSTER, SOLANA_RPC_URL, DRIP_PROGRAM_ID, DRIP_PROGRAM_ID_CONFIGURED } from "@/lib/solana/constants";
-import { getExplorerTxUrl } from "@/lib/solana/explorer";
+import { getExplorerTxUrl, getExplorerAddressUrl } from "@/lib/solana/explorer";
 import {
   AGENT_LOG_DEMO,
   AGENTS,
@@ -31,7 +31,7 @@ import {
   createSeedStreams,
 } from "@/lib/mock-data";
 
-// Drip Dashboard â€” single-file React app with full routing
+// Drip Dashboard - single-file React app with full routing
 // ---- Utils ----------------------------------------------------------------
 const fmtUSD = (n, frac = 6) => {
   const sign = n < 0 ? "-" : "";
@@ -50,7 +50,32 @@ const fmtDuration = (sec) => {
 
 const shortWalletAddress = (address) => (address ? `${address.slice(0, 4)}...${address.slice(-4)}` : null);
 
-// Smooth ticker â€” runs on rAF, accumulates from a base + rate*elapsed.
+// Rent/deposit minimums for devnet stream creation
+// StreamState account (~164 bytes) + escrow system account rent-exempt minimums
+const RENT_RESERVE_LAMPORTS = 2_039_280;
+const MIN_STREAM_LAMPORTS = 100_000; // 0.0001 SOL minimum practical stream funding
+const MIN_DEPOSIT_LAMPORTS = RENT_RESERVE_LAMPORTS + MIN_STREAM_LAMPORTS;
+const MIN_DEPOSIT_SOL = MIN_DEPOSIT_LAMPORTS / 1_000_000_000;
+const MIN_WITHDRAW_LAMPORTS = 5_000; // block dust/rent-threshold withdrawals
+
+function mapStreamError(err: any): string {
+  const msg: string = err?.message ?? String(err);
+  if (msg.includes("NothingToWithdraw")) return "No unlocked funds available yet.";
+  if (msg.includes("StreamPaused")) return "This stream is paused.";
+  if (msg.includes("UnauthorizedPayer")) return "Only the payer can do this.";
+  if (msg.includes("UnauthorizedReceiver")) return "Only the receiver can withdraw.";
+  if (msg.includes("AlreadyPaused")) return "This stream is already paused.";
+  if (msg.includes("NotPaused")) return "This stream is not paused.";
+  if (msg.includes("AlreadyCancelled")) return "This stream has already been cancelled.";
+  if (msg.includes("InsufficientEscrowFunds")) return "Escrow has insufficient releasable funds.";
+  if (msg.includes("Attempt to load a program that does not exist")) return "The configured DRIP program is not deployed on this cluster.";
+  if (msg.includes("already been processed")) return "This transaction was already submitted. Refreshing stream state...";
+  if (msg.includes("insufficient funds for rent")) return "Account needs more devnet SOL or the withdraw amount is too small. Wait longer or fund the wallet.";
+  if (msg.includes("User rejected") || msg.includes("rejected the request") || msg.includes("Transaction rejected") || msg.includes("WalletSignTransactionError")) return "Transaction was rejected in wallet.";
+  return msg.length > 200 ? msg.slice(0, 200) + "..." : msg;
+}
+
+// Smooth ticker - runs on rAF, accumulates from a base + rate*elapsed.
 function useStreamingValue(initial, ratePerSec, running = true) {
   const [v, setV] = useState(initial);
   const startRef = useRef({ t: performance.now(), base: initial });
@@ -73,7 +98,7 @@ function useStreamingValue(initial, ratePerSec, running = true) {
   return v;
 }
 
-// Solana avatar â€” deterministic pixel-blob from seed
+// Solana avatar - deterministic pixel-blob from seed
 function SolAvatar({ seed = "x", size = 32 }: any) {
   // hash â†’ color
   let h = 0; for (let i = 0; i < seed.length; i++) h = ((h << 5) - h) + seed.charCodeAt(i);
@@ -153,14 +178,14 @@ function Sidebar({ active, onChange, streams }: any) {
       <div className="mt-auto">
         <div className="rounded-xl border border-violet-400/20 bg-violet-400/5 p-4">
           <div className="text-[11px] uppercase tracking-[0.18em] text-violet-200/80 font-mono">Need fiat?</div>
-          <div className="mt-1.5 text-[13px] text-white/85">Top up via MoonPay â€” card to USDC in 12s.</div>
+          <div className="mt-1.5 text-[13px] text-white/85">Top up via MoonPay - card to USDC in 12s.</div>
           <button className="mt-3 w-full text-[12px] btn-ghost rounded-md py-1.5 hover:bg-violet-400/10 flex items-center justify-center gap-1.5">
             <Icon name="credit-card" size={12} /> On-ramp
           </button>
         </div>
         <div className="mt-4 flex items-center gap-2 px-2 text-[11px] font-mono text-white/35">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
-          <span>{PROTOCOL_STATS.rpcStatus} Â· slot {PROTOCOL_STATS.rpcSlotShort}</span>
+          <span>{PROTOCOL_STATS.rpcStatus} · slot {PROTOCOL_STATS.rpcSlotShort}</span>
         </div>
       </div>
     </aside>
@@ -192,7 +217,7 @@ function Topbar({ route, onNewStream }: any) {
         <div className="ml-auto flex items-center gap-2">
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.02] text-[12.5px] text-white/55 w-[260px]">
             <Icon name="search" size={13} />
-            <span className="flex-1">Search streams, addresses, txnsâ€¦</span>
+            <span className="flex-1">Search streams, addresses, txns...</span>
             <span className="font-mono text-[10px] text-white/35 px-1.5 rounded border border-white/10">âŒ˜K</span>
           </div>
           <button className="btn-ghost rounded-full w-9 h-9 flex items-center justify-center text-white/60 hover:text-white">
@@ -277,7 +302,7 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
   return (
     <div className="space-y-7">
       <PageHeader
-        eyebrow="01 â€” Overview"
+        eyebrow="01  -  Overview"
         title={<>Your money, in motion.</>}
         sub="The Net Flow Engine settles your incoming and outgoing streams every Solana block. Everything below ticks live."
         right={
@@ -297,12 +322,12 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.2em] text-violet-300/80">
-                <Icon name="waves" size={13} /> Net flow engine Â· live
+                <Icon name="waves" size={13} /> Net flow engine · live
               </div>
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className="pulse-dot inline-block w-2 h-2 rounded-full bg-emerald-400" />
                 <span className="text-[12.5px] text-emerald-300/90 font-mono">{PROTOCOL_STATS.finalityLabel}</span>
-                <span className="text-white/25">Â·</span>
+                <span className="text-white/25">·</span>
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-violet-400/40 bg-violet-400/10 text-[11px] font-mono uppercase tracking-[0.16em] text-violet-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-violet-300 pulse-dot" />
                   Protocol Status: {PROTOCOL_STATS.protocolStatus}
@@ -327,7 +352,7 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
 
           <div className="mt-8 grid lg:grid-cols-12 gap-8 items-end">
             <div className="lg:col-span-7">
-              <div className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Streaming balance Â· USDC</div>
+              <div className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Streaming balance · USDC</div>
               <div className="mt-3 flex items-baseline gap-1 num-stable">
                 <span className="text-white/40 text-[36px] font-num">$</span>
                 <span className="text-iri text-[72px] font-num leading-[0.95] tracking-[-0.025em]">{whole}</span>
@@ -344,10 +369,10 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
                 </span>
                 <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-400/10 text-rose-300 text-[12.5px] font-mono">
                   <Icon name="arrow-up-right" size={12} />
-                  âˆ’ ${(outSum).toFixed(6)} / sec <span className="text-rose-300/60 ml-1">outgoing</span>
+                  - ${(outSum).toFixed(6)} / sec <span className="text-rose-300/60 ml-1">outgoing</span>
                 </span>
                 <span className={`px-3 py-1.5 rounded-full text-[12.5px] font-mono border ${positive ? "border-emerald-400/30 text-emerald-300" : "border-rose-400/30 text-rose-300"}`}>
-                  Net: {positive ? "+" : ""}{net.toFixed(6)} USDC/sec â‰ˆ {positive ? "+" : ""}${(net * 86400).toFixed(2)}/day
+                  Net: {positive ? "+" : ""}{net.toFixed(6)} USDC/sec ~{positive ? "+" : ""}${(net * 86400).toFixed(2)}/day
                 </span>
               </div>
             </div>
@@ -365,7 +390,7 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
           icon="layers"
           label="Total value streamed"
           value={`$${fmtUSD(totalStreamed, 6)}`}
-          sub="lifetime Â· all directions"
+          sub="lifetime · all directions"
           accent
         />
         <SummaryTile
@@ -379,7 +404,7 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
           icon="sprout"
           label="Yield generated"
           value={`$${fmtUSD(yieldEarned, 6)}`}
-          sub={`lifetime Â· Raydium ${PROTOCOL_STATS.yieldApy.toFixed(2)}% APY`}
+          sub={`lifetime · Raydium ${PROTOCOL_STATS.yieldApy.toFixed(2)}% APY`}
           onClick={() => onGoTo("yield")}
         />
       </section>
@@ -440,7 +465,7 @@ function MiniStreamRow({ stream }: any) {
       </div>
       <div className="text-right">
         <div className={`font-num num-stable text-[16px] ${isIn ? "text-emerald-300" : "text-rose-300"}`}>
-          {isIn ? "+" : "âˆ’"}${fmtUSD(value, 4)}
+          {isIn ? "+" : "-"}${fmtUSD(value, 4)}
         </div>
         <div className="text-[10.5px] font-mono text-white/40">{stream.rate.toFixed(6)} {stream.token}/s</div>
       </div>
@@ -470,7 +495,7 @@ function FlowSparkline({ net }: any) {
   }).join(" ");
   return (
     <div className="relative h-[120px]">
-      <div className="text-[10.5px] uppercase tracking-[0.18em] text-white/40 font-mono mb-2">Balance Â· last 24h</div>
+      <div className="text-[10.5px] uppercase tracking-[0.18em] text-white/40 font-mono mb-2">Balance · last 24h</div>
       <svg viewBox="0 0 300 90" className="w-full h-[90px]">
         <defs>
           <linearGradient id="spkG" x1="0" y1="0" x2="0" y2="1">
@@ -492,7 +517,7 @@ function FlowSparkline({ net }: any) {
 // =========================================================================
 // STREAMS page
 // =========================================================================
-function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequireWallet, streamsLoading, streamsError, onRefresh }: any) {
+function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequireWallet, streamsLoading, streamsError, onRefresh, onWithdraw, onPause, onResume, onCancelStream, streamActions }: any) {
   const [filter, setFilter] = useState("all");
   const [topUpId, setTopUpId] = useState<string | null>(null);
 
@@ -522,7 +547,7 @@ function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequ
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="02 â€” Streams"
+        eyebrow="02 - Streams"
         title={<>Manage every drop.</>}
         sub="Pause, resume, cancel or top up any active stream. Counters tick in real time, settled every Solana block."
         right={
@@ -589,16 +614,25 @@ function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequ
             )}
           </div>
         )}
-        {visible.map((s) => (
-          <StreamCard
-            key={s.id}
-            stream={s}
-            walletConnected={walletConnected}
-            onToggle={() => guardWallet("Connect a wallet before pausing or resuming a stream.", () => toggle(s.id))}
-            onCancel={() => guardWallet("Connect a wallet before cancelling a stream.", () => cancel(s.id))}
-            onTopUp={() => guardWallet("Connect a wallet before topping up a stream.", () => setTopUpId(s.id))}
-          />
-        ))}
+        {visible.map((s) => {
+          const isMock = !s.publicKey;
+          return (
+            <StreamCard
+              key={s.id}
+              stream={s}
+              walletConnected={walletConnected}
+              isMock={isMock}
+              actionState={isMock ? null : (streamActions?.[s.id] ?? null)}
+              onWithdraw={() => onWithdraw?.(s)}
+              onPause={() => onPause?.(s)}
+              onResume={() => onResume?.(s)}
+              onCancelReal={() => onCancelStream?.(s)}
+              onToggle={() => guardWallet("Connect a wallet before pausing or resuming a stream.", () => toggle(s.id))}
+              onCancelMock={() => guardWallet("Connect a wallet before cancelling a stream.", () => cancel(s.id))}
+              onTopUp={() => guardWallet("Connect a wallet before topping up a stream.", () => setTopUpId(s.id))}
+            />
+          );
+        })}
       </div>
 
       {topUpId && (
@@ -612,22 +646,26 @@ function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequ
   );
 }
 
-function StreamCard({ stream, walletConnected, onToggle, onCancel, onTopUp }: any) {
+function StreamCard({ stream, walletConnected, isMock, actionState, onWithdraw, onPause, onResume, onCancelReal, onToggle, onCancelMock, onTopUp }: any) {
   const running = stream.status === "streaming";
   const accrued = useStreamingValue(stream.base, stream.rate, running);
-
   const isIn = stream.dir === "in";
   const isCompleted = stream.status === "completed";
+  const isPaused = stream.status === "paused";
+
+  const pending: string | null = actionState?.pending ?? null;
+  const txSig: string | null = actionState?.txSig ?? null;
+  const actionError: string | null = actionState?.error ?? null;
 
   const valStr = fmtUSD(accrued, 6);
   const [whole, decimal] = valStr.split(".");
   const stableDec = decimal.slice(0, 2);
   const fastDec = decimal.slice(2);
-
-  // progress = accrued / deposit
   const progress = Math.min(100, (accrued / stream.deposit) * 100);
   const remaining = Math.max(0, stream.deposit - accrued);
   const secondsLeft = stream.rate > 0 ? remaining / stream.rate : 0;
+
+  const explorerHref = stream.publicKey ? getExplorerAddressUrl(stream.publicKey) : null;
 
   return (
     <div className="rounded-2xl glass p-5 relative overflow-hidden hover:border-violet-400/25 transition">
@@ -651,8 +689,8 @@ function StreamCard({ stream, walletConnected, onToggle, onCancel, onTopUp }: an
       <div className="mt-5">
         <div className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-mono">Accrued</div>
         <div className="mt-1 flex items-baseline gap-1 num-stable">
-          <span className={`${isIn ? "text-emerald-300" : "text-rose-300"} text-[14px] font-num`}>{isIn ? "+" : "âˆ’"}</span>
-          <span className="text-white/40 text-[16px] font-num">$</span>
+          <span className={`${isIn ? "text-emerald-300" : "text-rose-300"} text-[14px] font-num`}>{isIn ? "+" : "-"}</span>
+          <span className="text-white/40 text-[16px] font-num">{stream.token === "SOL" ? "◎" : "$"}</span>
           <span className="text-iri text-[26px] font-num leading-none tracking-[-0.02em]">{whole}</span>
           <span className="text-iri text-[26px] font-num leading-none tracking-[-0.02em]">.</span>
           <span className="text-iri text-[26px] font-num leading-none tracking-[-0.02em]">{stableDec}</span>
@@ -660,17 +698,14 @@ function StreamCard({ stream, walletConnected, onToggle, onCancel, onTopUp }: an
           <span className="text-white/35 text-[11px] font-mono ml-1.5">{stream.token}</span>
         </div>
         <div className="text-[11px] text-white/40 font-mono mt-1.5">
-          {isCompleted ? "stream finalized" : `${stream.rate.toFixed(6)} ${stream.token}/sec Â· $${(stream.rate * 86400).toFixed(2)}/day`}
+          {isCompleted ? "stream finalized" : `${stream.rate.toFixed(6)} ${stream.token}/sec · ${(stream.rate * 86400).toFixed(2)}/day`}
         </div>
       </div>
 
-      {/* Progress bar */}
       <div className="mt-4">
         <div className="flex items-center justify-between text-[10.5px] font-mono text-white/45 mb-1.5">
-          <span>{progress.toFixed(1)}% of ${stream.deposit.toLocaleString()} deposit</span>
-          {!isCompleted && stream.rate > 0 && (
-            <span>{fmtDuration(secondsLeft)} remaining</span>
-          )}
+          <span>{progress.toFixed(1)}% of {stream.deposit.toLocaleString(undefined, { maximumFractionDigits: 4 })} deposit</span>
+          {!isCompleted && stream.rate > 0 && <span>{fmtDuration(secondsLeft)} remaining</span>}
         </div>
         <div className="h-1.5 rounded-full bg-white/5 overflow-hidden relative">
           {!isCompleted && (
@@ -683,10 +718,96 @@ function StreamCard({ stream, walletConnected, onToggle, onCancel, onTopUp }: an
         </div>
       </div>
 
+      {/* Hint for receiver: show when very little has unlocked yet */}
+      {!isMock && isIn && !isCompleted && !pending && !txSig && !actionError && (() => {
+        const withdrawnSOL: number = stream.withdrawnAmountSol ?? 0;
+        const withdrawableLamports = Math.floor((accrued - withdrawnSOL) * LAMPORTS_PER_SOL_NUM);
+        return withdrawableLamports <= MIN_WITHDRAW_LAMPORTS ? (
+          <div className="mt-3 rounded-lg border border-white/8 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-white/45 flex items-center gap-1.5">
+            <Icon name="clock" size={10} className="shrink-0 text-white/35" />
+            Wait a few seconds for funds to unlock.
+          </div>
+        ) : null;
+      })()}
+      {actionError && (
+        <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] px-2.5 py-1.5 text-[11px] font-mono text-rose-200 flex items-start gap-1.5">
+          <Icon name="triangle-alert" size={10} className="shrink-0 mt-0.5 text-rose-300" />
+          <span className="break-all">{actionError}</span>
+        </div>
+      )}
+      {txSig && !actionError && (
+        <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.05] px-2.5 py-1.5 text-[11px] font-mono text-emerald-200 flex items-center gap-1.5">
+          <Icon name="check-circle-2" size={10} className="shrink-0 text-emerald-300" />
+          <span>Done.</span>
+          <a href={getExplorerTxUrl(txSig)} target="_blank" rel="noopener noreferrer" className="ml-auto text-violet-300 hover:text-violet-100 flex items-center gap-1 shrink-0">
+            Explorer <Icon name="external-link" size={9} />
+          </a>
+        </div>
+      )}
+
       <div className="mt-4 flex items-center justify-between gap-2">
         <div className="text-[10.5px] font-mono text-white/35">{stream.addr}</div>
         <div className="flex items-center gap-1">
-          {!isCompleted && (
+          {/* Real stream: receiver withdraw */}
+          {!isMock && isIn && !isCompleted && (
+            <button
+              onClick={onWithdraw}
+              disabled={!!pending || !walletConnected}
+              className={`btn-ghost rounded-md h-8 px-2.5 flex items-center gap-1 text-white/75 hover:text-white text-[11px] disabled:opacity-50 disabled:cursor-not-allowed`}
+              title="Withdraw unlocked funds"
+            >
+              {pending === "withdraw"
+                ? <><span className="inline-block w-3 h-3 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" /> Withdrawing...</>
+                : <><Icon name="download" size={11} /> Withdraw</>}
+            </button>
+          )}
+          {/* Real stream: payer pause */}
+          {!isMock && !isIn && running && (
+            <button
+              onClick={onPause}
+              disabled={!!pending || !walletConnected}
+              className="btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Pause stream"
+            >
+              {pending === "pause"
+                ? <span className="inline-block w-3 h-3 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+                : <Icon name="pause" size={12} />}
+            </button>
+          )}
+          {/* Real stream: payer resume */}
+          {!isMock && !isIn && isPaused && (
+            <button
+              onClick={onResume}
+              disabled={!!pending || !walletConnected}
+              className="btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Resume stream"
+            >
+              {pending === "resume"
+                ? <span className="inline-block w-3 h-3 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+                : <Icon name="play" size={12} />}
+            </button>
+          )}
+          {/* Real stream: payer cancel */}
+          {!isMock && !isIn && !isCompleted && (
+            <button
+              onClick={onCancelReal}
+              disabled={!!pending || !walletConnected}
+              className="btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:border-rose-400/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Cancel stream"
+            >
+              {pending === "cancel"
+                ? <span className="inline-block w-3 h-3 rounded-full border-2 border-rose-400 border-t-transparent animate-spin" />
+                : <Icon name="x" size={12} />}
+            </button>
+          )}
+          {/* Real stream: top-up disabled (coming later) */}
+          {!isMock && !isCompleted && (
+            <button disabled className="btn-ghost rounded-md h-8 px-2.5 flex items-center gap-1 text-white/25 text-[11px] cursor-not-allowed" title="Top up coming later">
+              <Icon name="plus" size={11} /> Top up
+            </button>
+          )}
+          {/* Mock stream visual actions */}
+          {isMock && !isCompleted && (
             <button
               onClick={onTopUp}
               className={`btn-ghost rounded-md h-8 px-2.5 flex items-center gap-1 text-white/75 hover:text-white text-[11px] ${!walletConnected ? "opacity-60" : ""}`}
@@ -695,7 +816,7 @@ function StreamCard({ stream, walletConnected, onToggle, onCancel, onTopUp }: an
               <Icon name="plus" size={11} /> Top up
             </button>
           )}
-          {!isCompleted && (
+          {isMock && !isCompleted && (
             <button
               onClick={onToggle}
               className={`btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white ${!walletConnected ? "opacity-60" : ""}`}
@@ -704,18 +825,24 @@ function StreamCard({ stream, walletConnected, onToggle, onCancel, onTopUp }: an
               <Icon name={running ? "pause" : "play"} size={12} />
             </button>
           )}
-          {!isCompleted && (
+          {isMock && !isCompleted && (
             <button
-              onClick={onCancel}
+              onClick={onCancelMock}
               className={`btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:border-rose-400/30 ${!walletConnected ? "opacity-60" : ""}`}
               title={walletConnected ? "Cancel" : "Connect wallet to cancel"}
             >
               <Icon name="x" size={12} />
             </button>
           )}
-          <a href="#" className="btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white" title="View on Solscan">
-            <Icon name="arrow-up-right" size={12} />
-          </a>
+          {explorerHref ? (
+            <a href={explorerHref} target="_blank" rel="noopener noreferrer" className="btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white" title="View stream account on Explorer">
+              <Icon name="arrow-up-right" size={12} />
+            </a>
+          ) : (
+            <a href="#" className="btn-ghost rounded-md w-8 h-8 flex items-center justify-center text-white/70 hover:text-white" title="View on Explorer">
+              <Icon name="arrow-up-right" size={12} />
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -785,6 +912,41 @@ function TopUpModal({ stream, onClose, onSubmit }: any) {
   );
 }
 
+function CancelConfirmModal({ stream, onConfirm, onClose }: any) {
+  return (
+    <div className="fixed inset-0 z-50 fade-in">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div className="w-full max-w-[400px] rounded-3xl grad-border glass-strong p-1.5">
+          <div className="rounded-[20px] bg-[#0b0a1a] p-7">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-rose-400/10 text-rose-300 flex items-center justify-center shrink-0">
+                <Icon name="triangle-alert" size={18} />
+              </div>
+              <div>
+                <div className="text-[15px] text-white">Cancel this stream?</div>
+                <div className="text-[11.5px] font-mono text-white/40 truncate">{stream?.party}</div>
+              </div>
+            </div>
+            <p className="text-[13px] text-white/65 leading-relaxed">
+              Earned funds will be settled to the receiver and remaining escrow funds returned to the payer.
+            </p>
+            <div className="mt-6 flex items-center gap-2 justify-end">
+              <button onClick={onClose} className="btn-ghost rounded-full px-4 py-2 text-[13px] text-white/85">Keep stream</button>
+              <button
+                onClick={onConfirm}
+                className="rounded-full px-5 py-2 text-[13px] font-medium bg-rose-500/20 text-rose-200 border border-rose-500/30 hover:bg-rose-500/30 flex items-center gap-1.5"
+              >
+                <Icon name="x" size={12} /> Cancel stream
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // =========================================================================
 // YIELD page
 // =========================================================================
@@ -798,7 +960,7 @@ function YieldPage({ streams, walletConnected, onRequireWallet }: any) {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="03 â€” Capital efficiency"
+        eyebrow="03  -  Capital efficiency"
         title={<>Idle escrow, working overtime.</>}
         sub="Funds locked in your active stream contracts aren't sitting still. They're routed into Raydium concentrated liquidity vaults and re-balanced every Solana epoch."
       />
@@ -818,7 +980,7 @@ function YieldPage({ streams, walletConnected, onRequireWallet }: any) {
               </div>
               <div className="mt-3 flex items-center gap-2 text-[12.5px] font-mono text-white/55">
                 <span className="text-emerald-300">+ ${yieldRate.toFixed(8)}/sec</span>
-                <span className="text-white/30">Â·</span>
+                <span className="text-white/30">·</span>
                 <span>auto-compounded each epoch (~2.5 days)</span>
               </div>
             </div>
@@ -839,7 +1001,7 @@ function YieldPage({ streams, walletConnected, onRequireWallet }: any) {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <YieldStat icon="lock" label="Total deposits in yield" value={`$${ESCROW.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub={`across ${streams.filter(s => s.status === "streaming").length} active escrow contracts`} />
         <YieldStat icon="trending-up" label="Current APY (avg)" value={`${APY.toFixed(2)}%`} sub="weighted across 3 pools" tone="up" />
-        <YieldStat icon="repeat" label="Compounding cadence" value="Every epoch" sub="~2.5 days Â· zero downtime" />
+        <YieldStat icon="repeat" label="Compounding cadence" value="Every epoch" sub="~2.5 days · zero downtime" />
       </section>
 
       <section className="grid lg:grid-cols-2 gap-4">
@@ -870,7 +1032,7 @@ function YieldPage({ streams, walletConnected, onRequireWallet }: any) {
           </ol>
           <div className="mt-6 pt-5 border-t border-white/5 text-[11.5px] font-mono text-white/40 flex items-center gap-2">
             <Icon name="shield-check" size={12} className="text-emerald-300" />
-            Audited by Sec3 Â· withdraw any time, no penalty
+            Audited by Sec3 · withdraw any time, no penalty
           </div>
         </div>
       </section>
@@ -898,7 +1060,7 @@ function PoolRow({ name, share, apy, tvl }: any) {
     <div>
       <div className="flex items-center justify-between text-[13px]">
         <span className="text-white/85">{name}</span>
-        <span className="font-mono text-white/55">{share}% Â· {apy}</span>
+        <span className="font-mono text-white/55">{share}% · {apy}</span>
       </div>
       <div className="mt-1.5 h-1.5 rounded-full bg-white/5 overflow-hidden">
         <div className="h-full bg-gradient-to-r from-violet-400 to-fuchsia-400" style={{ width: `${share}%` }} />
@@ -919,7 +1081,7 @@ function HistoryPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="04 â€” Ledger"
+        eyebrow="04  -  Ledger"
         title={<>Every stream, on the record.</>}
         sub="A transparent, immutable log of all completed and cancelled streams. Each row links to Solscan."
         right={
@@ -1027,9 +1189,9 @@ function AgentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="05 â€” Agent Pay Â· 2026"
+        eyebrow="05 - Agent Pay · 2026"
         title={<>The autonomous economy.</>}
-        sub="Agents hire other agents and pay them per token of compute. Settlement happens at the speed of inference â€” sub-second, sub-cent."
+        sub="Agents hire other agents and pay them per token of compute. Settlement happens at the speed of inference - sub-second, sub-cent."
         right={
           <div className="flex items-center gap-2">
             <button onClick={() => setPaused(p => !p)} className="btn-ghost rounded-full px-4 py-2 text-[13px] text-white/85 flex items-center gap-2">
@@ -1090,7 +1252,7 @@ function AgentsPage() {
             </div>
             <div className="font-mono text-[12px] p-4 h-[420px] overflow-hidden">
               {log.length === 0 && (
-                <div className="text-white/40 text-[11.5px]">$ drip mesh tail --follow Â·Â·Â· waiting for settlements</div>
+                <div className="text-white/40 text-[11.5px]">$ drip mesh tail --follow ... waiting for settlements</div>
               )}
               {log.map((l, i) => (
                 <div
@@ -1102,7 +1264,7 @@ function AgentsPage() {
                   <span className="text-violet-300">{l.agent}</span>
                   <span className="text-white/40">{l.verb}</span>
                   <span className="text-emerald-300">+{l.amt} USDC</span>
-                  <span className="text-white/40">â†’</span>
+                  <span className="text-white/40">-&gt;</span>
                   <span className="text-cyan-300">{l.target}</span>
                   <span className="ml-auto text-white/35">{l.tokens} tok</span>
                 </div>
@@ -1122,7 +1284,7 @@ function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="06 â€” Settings"
+        eyebrow="06  -  Settings"
         title={<>Workspace preferences.</>}
         sub="Your wallet, defaults, and security posture."
       />
@@ -1189,7 +1351,11 @@ function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWa
   const perMin = perSec * 60;
 
   const recipientOk = recipient.trim().length > 3;
-  const formValid = recipientOk && amount > 0 && deposit > 0;
+  const flowRateLamports = Math.floor(perSec * LAMPORTS_PER_SOL_NUM);
+  const depositLamportsNum = Math.floor(deposit * LAMPORTS_PER_SOL_NUM);
+  const flowRateTooSmall = amount > 0 && flowRateLamports < 1;
+  const depositTooSmall = deposit > 0 && depositLamportsNum < MIN_DEPOSIT_LAMPORTS;
+  const formValid = recipientOk && amount > 0 && deposit > 0 && !flowRateTooSmall && !depositTooSmall;
   const txPending = txStatus === "confirming" || txStatus === "preparing";
 
   if (!open) return null;
@@ -1227,6 +1393,11 @@ function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWa
                   </button>
                 ))}
               </div>
+              {recipientOk && SOLANA_CLUSTER !== "mainnet-beta" && (
+                <div className="mt-1.5 text-[11px] font-mono text-amber-200/70 flex items-center gap-1">
+                  <Icon name="triangle-alert" size={11} /> Receiver should have devnet SOL to avoid rent issues. Airdrop at faucet.solana.com if needed.
+                </div>
+              )}
             </Field>
 
             <Field label="Spending Policy" hint="How this stream is governed">
@@ -1309,7 +1480,11 @@ function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWa
                 <BreakdownCell label="/day"  value={`◎${perDay.toFixed(2)}`} />
               </div>
               <div className="mt-3 text-[11.5px] font-mono text-white/45">
-                Settles every <span className="text-violet-200">{PROTOCOL_STATS.blockTime}</span> on Solana Â· receiver can withdraw mid-stream
+                Settles every <span className="text-violet-200">{PROTOCOL_STATS.blockTime}</span> on Solana · receiver can withdraw mid-stream
+              </div>
+              <div className={`mt-2 text-[11px] font-mono ${flowRateTooSmall ? "text-rose-300" : "text-white/35"}`}>
+                = {flowRateLamports.toLocaleString()} lamports/sec
+                {flowRateTooSmall && <span className="ml-2 font-bold">— rounds to 0, increase amount or shorten period</span>}
               </div>
             </div>
 
@@ -1326,9 +1501,14 @@ function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWa
                 />
                 <span className="text-[11px] font-mono text-white/45">covers {fmtDuration(deposit / (perSec || 0.0001))}</span>
               </div>
+              {depositTooSmall && (
+                <div className="mt-1.5 text-[11px] font-mono text-rose-300 flex items-center gap-1">
+                  <Icon name="triangle-alert" size={11} /> Deposit is too small for rent reserve. Minimum: ◎{MIN_DEPOSIT_SOL.toFixed(4)}
+                </div>
+              )}
             </Field>
 
-            <Field label="Memo" hint="Optional Â· visible on-chain">
+            <Field label="Memo" hint="Optional · visible on-chain">
               <input
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
@@ -1381,7 +1561,7 @@ function NewStreamDrawer({ open, onClose, onCreate, walletConnected, onConnectWa
               </div>
               <div className="flex-1">
                 <div className="text-[13.5px] text-white">Route idle escrow to Raydium</div>
-                <div className="text-[11.5px] font-mono text-white/40 mt-0.5">+{PROTOCOL_STATS.yieldApy.toFixed(2)}% APY Â· withdrawn alongside stream</div>
+                <div className="text-[11.5px] font-mono text-white/40 mt-0.5">+{PROTOCOL_STATS.yieldApy.toFixed(2)}% APY · withdrawn alongside stream</div>
               </div>
               <Toggle defaultOn />
             </div>
@@ -1499,6 +1679,9 @@ export default function DashboardApp() {
   const [txStatus, setTxStatus] = useState<"idle"|"preparing"|"confirming"|"success"|"error">("idle");
   const [txSig, setTxSig] = useState<string|null>(null);
   const [txError, setTxError] = useState<string|null>(null);
+  const [streamActions, setStreamActions] = useState<Record<string, { pending: string | null; txSig: string | null; error: string | null }>>({});
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const [cancelConfirm, setCancelConfirm] = useState<any | null>(null);
   const { connected, connect, wallet, publicKey, error: walletError } = useDripWallet();
   const router = useRouter();
 
@@ -1562,11 +1745,38 @@ export default function DashboardApp() {
     }
 
     const L = LAMPORTS_PER_SOL_NUM;
+
+    const flowRateLamports = Math.floor(data.perSec * L);
+    if (flowRateLamports < 1) {
+      setTxStatus("error");
+      setTxError("Flow rate is too small. Increase the amount or choose a shorter period.");
+      return;
+    }
+
     const depositLamports = new BN(Math.floor(data.deposit * L));
-    const flowRate = new BN(Math.max(1, Math.floor(data.perSec * L)));
+    if (depositLamports.ltn(MIN_DEPOSIT_LAMPORTS)) {
+      setTxStatus("error");
+      setTxError(`Deposit is too small for rent reserve and stream funding. Minimum deposit is ${MIN_DEPOSIT_SOL.toFixed(4)} SOL.`);
+      return;
+    }
+
+    const flowRate = new BN(flowRateLamports);
     const maxBudget = data.policy === "agent" && data.budgetCap > 0
       ? new BN(Math.floor(data.budgetCap * L))
       : new BN(0);
+
+    if (maxBudget.gtn(0)) {
+      if (maxBudget.lt(flowRate)) {
+        setTxStatus("error");
+        setTxError("Budget cap must be at least the per-second flow rate.");
+        return;
+      }
+      if (maxBudget.gt(depositLamports)) {
+        setTxStatus("error");
+        setTxError("Budget cap cannot exceed the deposit amount.");
+        return;
+      }
+    }
 
     let expirationTime = 0;
     const revokeSrc = data.policy === "agent"
@@ -1639,6 +1849,82 @@ export default function DashboardApp() {
     }
   };
 
+  const doStreamAction = useCallback(async (
+    stream: any,
+    action: string,
+    fn: () => Promise<{ signature: string }>,
+  ) => {
+    if (!requireWallet()) return;
+    if (!DRIP_PROGRAM_ID_CONFIGURED) {
+      setStreamActions((prev) => ({ ...prev, [stream.id]: { pending: null, txSig: null, error: "DRIP program ID is not configured. Set NEXT_PUBLIC_DRIP_PROGRAM_ID in .env.local." } }));
+      return;
+    }
+    // Guard: synchronously block re-entry for the same stream using a ref
+    if (inFlightRef.current.has(stream.id)) return;
+    inFlightRef.current.add(stream.id);
+    setStreamActions((prev) => ({ ...prev, [stream.id]: { pending: action, txSig: null, error: null } }));
+    try {
+      const { signature } = await fn();
+      setStreamActions((prev) => ({ ...prev, [stream.id]: { pending: null, txSig: signature, error: null } }));
+      void refreshStreams();
+    } catch (err: any) {
+      const mapped = mapStreamError(err);
+      setStreamActions((prev) => ({ ...prev, [stream.id]: { pending: null, txSig: null, error: mapped } }));
+      if ((err?.message ?? "").includes("already been processed")) void refreshStreams();
+    } finally {
+      inFlightRef.current.delete(stream.id);
+    }
+  }, [requireWallet, refreshStreams]);
+
+  const handleWithdraw = useCallback((stream: any) => {
+    if (!wallet) return;
+    const withdrawnSOL: number = stream.withdrawnAmountSol ?? 0;
+    const withdrawableLamports = Math.floor((stream.base - withdrawnSOL) * LAMPORTS_PER_SOL_NUM);
+    if (withdrawableLamports <= 0) {
+      setStreamActions((prev) => ({ ...prev, [stream.id]: { pending: null, txSig: null, error: "No unlocked funds available yet." } }));
+      return;
+    }
+    if (withdrawableLamports < MIN_WITHDRAW_LAMPORTS) {
+      setStreamActions((prev) => ({ ...prev, [stream.id]: { pending: null, txSig: null, error: "Unlocked amount is too small to withdraw yet. Wait a few more seconds." } }));
+      return;
+    }
+    void doStreamAction(stream, "withdraw", () =>
+      withdrawFromStream({ wallet, streamPublicKey: new PublicKey(stream.publicKey) }),
+    );
+  }, [wallet, doStreamAction]);
+
+  const handlePause = useCallback((stream: any) => {
+    if (!wallet) return;
+    void doStreamAction(stream, "pause", () =>
+      pauseStream({ wallet, streamPublicKey: new PublicKey(stream.publicKey) }),
+    );
+  }, [wallet, doStreamAction]);
+
+  const handleResume = useCallback((stream: any) => {
+    if (!wallet) return;
+    void doStreamAction(stream, "resume", () =>
+      resumeStream({ wallet, streamPublicKey: new PublicKey(stream.publicKey) }),
+    );
+  }, [wallet, doStreamAction]);
+
+  const handleCancelStream = useCallback((stream: any) => {
+    if (!requireWallet()) return;
+    setCancelConfirm(stream);
+  }, [requireWallet]);
+
+  const handleCancelConfirmed = useCallback(() => {
+    const stream = cancelConfirm;
+    setCancelConfirm(null);
+    if (!stream || !wallet) return;
+    void doStreamAction(stream, "cancel", () =>
+      cancelStream({
+        wallet,
+        streamPublicKey: new PublicKey(stream.publicKey),
+        receiverPublicKey: new PublicKey(stream.receiverPublicKey),
+      }),
+    );
+  }, [cancelConfirm, wallet, doStreamAction]);
+
   return (
     <div className="min-h-screen relative flex">
       <Backdrop />
@@ -1667,7 +1953,7 @@ export default function DashboardApp() {
           )}
           <RouteTransition k={route}>
             {route === "dashboard" && <DashboardPage streams={streams} onNewStream={openNewStream} onGoTo={setRoute} walletConnected={connected} walletError={walletError} onConnectWallet={connectWallet} onRequireWallet={requireWallet} />}
-            {route === "streams"   && <StreamsPage   streams={streams} setStreams={setStreams} onNewStream={openNewStream} walletConnected={connected} onRequireWallet={requireWallet} streamsLoading={streamsLoading} streamsError={streamsError} onRefresh={refreshStreams} />}
+            {route === "streams"   && <StreamsPage   streams={streams} setStreams={setStreams} onNewStream={openNewStream} walletConnected={connected} onRequireWallet={requireWallet} streamsLoading={streamsLoading} streamsError={streamsError} onRefresh={refreshStreams} onWithdraw={handleWithdraw} onPause={handlePause} onResume={handleResume} onCancelStream={handleCancelStream} streamActions={streamActions} />}
             {route === "yield"     && <YieldPage     streams={streams} walletConnected={connected} onRequireWallet={requireWallet} />}
             {route === "history"   && <HistoryPage />}
             {route === "agents"    && <AgentsPage />}
@@ -1675,10 +1961,17 @@ export default function DashboardApp() {
             {route === "settings"  && <SettingsPage />}
           </RouteTransition>
           <div className="text-center text-[11px] font-mono text-white/30 pt-12 pb-12">
-            Drip Â· {PROTOCOL_STATS.clusterLabel} Â· {PROTOCOL_STATS.version} Â· made with â—‡ for the streaming economy
+            Drip · {PROTOCOL_STATS.clusterLabel} · {PROTOCOL_STATS.version} · made with love for the streaming economy
           </div>
         </main>
       </div>
+      {cancelConfirm && (
+        <CancelConfirmModal
+          stream={cancelConfirm}
+          onConfirm={handleCancelConfirmed}
+          onClose={() => setCancelConfirm(null)}
+        />
+      )}
       <NewStreamDrawer
         open={drawer}
         onClose={() => { setDrawer(false); setTxStatus("idle"); setTxSig(null); setTxError(null); }}

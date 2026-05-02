@@ -47,6 +47,8 @@ function mapToUiStream(stream: DripStream, walletKey: PublicKey): Record<string,
     policy:
       stream.maxBudgetLamports.gtn(0) || stream.expirationTime > 0 ? "agent" : "standard",
     publicKey: stream.publicKey.toBase58(),
+    receiverPublicKey: stream.receiver.toBase58(),
+    withdrawnAmountSol: stream.withdrawnAmountLamports.toNumber() / L,
   };
 }
 

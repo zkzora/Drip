@@ -23,7 +23,7 @@ import {
   WORKFORCE_DEMO,
 } from "@/lib/mock-data";
 
-// Drip â€” Streaming payments on Solana
+// Drip  -  Streaming payments on Solana
 // Single-file React app rendered into #root.
 
 // --- Tiny utilities --------------------------------------------------------
@@ -31,7 +31,7 @@ const fmtUSD = (n, frac = 6) => {
   const [w, d = ""] = n.toFixed(frac).split(".");
   return w.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (frac ? "." + d : "");
 };
-const truncAddr = (a) => `${a.slice(0, 4)}â€¦${a.slice(-4)}`;
+const truncAddr = (a) => `${a.slice(0, 4)}...${a.slice(-4)}`;
 
 // --- Live counter hook -----------------------------------------------------
 function useStreamingValue(initial, ratePerSec, running = true) {
@@ -87,7 +87,7 @@ function Nav() {
           <a href="#" className="flex items-center gap-2.5 group">
             <DripMark />
             <span className="font-medium tracking-tight text-[17px]">Drip</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-violet-300/70 ml-1 px-1.5 py-0.5 rounded border border-violet-400/20">{PROTOCOL_STATS.version} Â· devnet</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-violet-300/70 ml-1 px-1.5 py-0.5 rounded border border-violet-400/20">{PROTOCOL_STATS.version} · devnet</span>
           </a>
           <nav className="hidden md:flex items-center gap-1">
             {LANDING_NAV_LINKS.map((l) => (
@@ -146,7 +146,7 @@ function Hero() {
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-300" />
             </span>
             <span className="font-mono uppercase tracking-[0.16em]">Now live on Solana devnet</span>
-            <span className="text-white/30">Â·</span>
+            <span className="text-white/30">·</span>
             <span>2026 cohort</span>
           </div>
 
@@ -196,7 +196,7 @@ function Stat({ label, value, hint }: any) {
 }
 
 // =========================================================================
-// Streaming Card â€” the WOW component
+// Streaming Card  -  the WOW component
 // =========================================================================
 function StreamingCard() {
   const [running, setRunning] = useState(true);
@@ -228,12 +228,12 @@ function StreamingCard() {
         <div className="flex items-start justify-between relative">
           <div>
             <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-white/45">
-              <Icon name="waves" size={13} /> Active stream Â· {LANDING_STREAMING_CARD.activeStreamId}
+              <Icon name="waves" size={13} /> Active stream · {LANDING_STREAMING_CARD.activeStreamId}
             </div>
             <div className="mt-2 flex items-center gap-2">
               <span className="pulse-dot inline-block w-2 h-2 rounded-full bg-emerald-400" />
               <span className="text-[12.5px] text-emerald-300/90 font-mono">STREAMING</span>
-              <span className="text-white/25">Â·</span>
+              <span className="text-white/25">·</span>
               <span className="text-[12.5px] text-white/55 font-num">{fmtElapsed(elapsedSec)}</span>
             </div>
           </div>
@@ -248,7 +248,7 @@ function StreamingCard() {
 
         {/* Counter */}
         <div className="mt-7">
-          <div className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Received Â· {LANDING_STREAMING_CARD.token}</div>
+          <div className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Received · {LANDING_STREAMING_CARD.token}</div>
           <div className="mt-3 flex items-baseline gap-1 num-stable">
             <span className="text-white/40 text-[34px] font-num">$</span>
             <span className="text-iri text-[58px] font-num leading-none tracking-[-0.02em]">{whole}</span>
@@ -259,7 +259,7 @@ function StreamingCard() {
           <div className="mt-2.5 flex items-center gap-2 text-[11.5px] text-white/40 font-mono">
             <Icon name="trending-up" size={12} className="text-emerald-300/80" />
             <span className="text-emerald-300/80">+{(RATE).toFixed(3)} USDC/sec</span>
-            <span>Â·</span>
+            <span>·</span>
             <span>= ${(RATE * 86400).toFixed(2)}/day</span>
           </div>
         </div>
@@ -290,7 +290,7 @@ function StreamingCard() {
 
         <div className="mt-5 flex items-center gap-2 pt-4 border-t border-white/5 text-[11px] text-white/40 font-mono">
           <Icon name="shield-check" size={12} className="text-violet-300" />
-          <span>Settled on-chain Â· slot {PROTOCOL_STATS.slot}</span>
+          <span>Settled on-chain · slot {PROTOCOL_STATS.slot}</span>
           <span className="ml-auto">tx {truncAddr(LANDING_STREAMING_CARD.txHash)}</span>
         </div>
       </div>
@@ -365,14 +365,14 @@ function PartnersStrip() {
 }
 
 // =========================================================================
-// Why Drip â€” old vs new + 3 pillars
+// Why Drip  -  old vs new + 3 pillars
 // =========================================================================
 function WhyDrip() {
   return (
     <section className="relative py-28">
       <div className="max-w-[1240px] mx-auto px-6">
         <SectionHeader
-          eyebrow="01 â€” Why Drip"
+          eyebrow="01  -  Why Drip"
           title={<>Salary is paid monthly.<br /><span className="text-white/40">Value is created by the second.</span></>}
           sub="The lump-sum payment model is a relic of paper checks. Drip fixes the temporal mismatch between work and money."
         />
@@ -464,7 +464,7 @@ function SectionHeader({ eyebrow, title, sub }: any) {
 }
 
 // =========================================================================
-// Use cases â€” tabbed
+// Use cases  -  tabbed
 // =========================================================================
 function UseCases() {
   const [active, setActive] = useState(0);
@@ -474,9 +474,9 @@ function UseCases() {
     <section className="relative py-28">
       <div className="max-w-[1240px] mx-auto px-6">
         <SectionHeader
-          eyebrow="02 â€” Use cases"
+          eyebrow="02  -  Use cases"
           title={<>Three economies. <span className="text-white/40">One protocol.</span></>}
-          sub="Drip is a primitive â€” anywhere money should match the cadence of work, attention, or compute, it fits."
+          sub="Drip is a primitive  -  anywhere money should match the cadence of work, attention, or compute, it fits."
         />
 
         {/* Tabs */}
@@ -488,7 +488,7 @@ function UseCases() {
               className={`text-left rounded-2xl px-5 py-5 border transition ${active === i ? "tab-active" : "border-white/8 hover:border-white/20 bg-white/[0.02]"}`}
             >
               <div className="flex items-center justify-between">
-                <span className="tab-num font-mono text-[11px] tracking-[0.2em] text-white/40 uppercase">{String(i + 1).padStart(2, "0")} Â· {cc.tag}</span>
+                <span className="tab-num font-mono text-[11px] tracking-[0.2em] text-white/40 uppercase">{String(i + 1).padStart(2, "0")} · {cc.tag}</span>
                 <Icon name={cc.icon} size={16} className={active === i ? "text-violet-200" : "text-white/40"} />
               </div>
               <div className={`mt-3 text-[19px] tracking-tight ${active === i ? "text-white" : "text-white/70"}`}>{cc.title}</div>
@@ -505,7 +505,7 @@ function UseCases() {
             <ul className="mt-7 space-y-4">
               {c.bullets.map((b, i) => (
                 <li key={i} className="flex gap-3 text-[14px] text-white/75 leading-[1.55]">
-                  <span className="mt-1 w-4 h-4 rounded-full grad-border bg-white/[0.03] flex items-center justify-center text-[10px] text-violet-200 font-mono">â†’</span>
+                  <span className="mt-1 w-4 h-4 rounded-full grad-border bg-white/[0.03] flex items-center justify-center text-[10px] text-violet-200 font-mono">{"→"}</span>
                   <span>{b}</span>
                 </li>
               ))}
@@ -613,7 +613,7 @@ function DemoSubs() {
           </div>
           <div className="mt-2 flex items-center justify-between text-[10.5px] font-mono text-white/55">
             <span>{SUBSCRIPTION_DEMO.progressLabel}</span>
-            <span>{playing ? `STREAMING Â· ${SUBSCRIPTION_DEMO.ratePerSec.toFixed(6)} USDC/s` : "PAUSED Â· 0.000000 USDC/s"}</span>
+            <span>{playing ? `STREAMING · ${SUBSCRIPTION_DEMO.ratePerSec.toFixed(6)} USDC/s` : "PAUSED · 0.000000 USDC/s"}</span>
           </div>
         </div>
       </div>
@@ -630,7 +630,7 @@ function DemoSubs() {
       </div>
 
       <div className="mt-auto pt-5 text-[11.5px] text-white/40 font-mono">
-        Stream auto-cancels when tab closes Â· No subscription forgotten
+        Stream auto-cancels when tab closes · No subscription forgotten
       </div>
     </div>
   );
@@ -671,7 +671,7 @@ function DemoAgents() {
             );
           })}
         </div>
-        <div className="mt-2 px-2 text-[11px] font-mono text-white/35">{LANDING_AGENT_DEMO.streamId} Â· {tick + 1} settlements ledgered</div>
+        <div className="mt-2 px-2 text-[11px] font-mono text-white/35">{LANDING_AGENT_DEMO.streamId} · {tick + 1} settlements ledgered</div>
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-3 text-[12px]">
@@ -700,7 +700,7 @@ function Developers() {
     <section id="calc" className="relative py-28">
       <div className="max-w-[1240px] mx-auto px-6">
         <SectionHeader
-          eyebrow="03 â€” Developer experience"
+          eyebrow="03  -  Developer experience"
           title={<>Three lines to a live stream.</>}
           sub="The drip-sol SDK abstracts PDAs, escrow accounts and time-math so you can focus on product. Typed, tree-shakable, devnet-ready."
         />
@@ -735,7 +735,7 @@ function CodeBlock() {
           <span className="ml-3 font-mono text-[12px] text-white/45">stream.ts</span>
           <span className="ml-auto flex items-center gap-3 text-[11.5px] font-mono text-white/35">
             <span>TypeScript</span>
-            <span>Â·</span>
+            <span>·</span>
             <button className="hover:text-white/70 flex items-center gap-1"><Icon name="copy" size={12} /> Copy</button>
           </span>
         </div>
@@ -850,9 +850,9 @@ function Ecosystem() {
     <section className="relative py-24">
       <div className="max-w-[1240px] mx-auto px-6">
         <SectionHeader
-          eyebrow="04 â€” Trust & ecosystem"
+          eyebrow="04  -  Trust & ecosystem"
           title={<>The pipes underneath.</>}
-          sub="Drip composes with the best of Solana â€” payment, custody, on-ramp and yield, each handled by a specialist."
+          sub="Drip composes with the best of Solana  -  payment, custody, on-ramp and yield, each handled by a specialist."
         />
         <div className="mt-12 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {ECOSYSTEM_PARTNERS.map((p) => (
@@ -903,7 +903,7 @@ function FinalCTA() {
               <div className="mt-8 flex items-center justify-center gap-6 text-[11.5px] font-mono text-white/35">
                 {FINAL_CTA_STATS.map((stat, index) => (
                   <>
-                    {index > 0 && <span>Â·</span>}
+                    {index > 0 && <span>·</span>}
                     <span key={stat}>{stat}</span>
                   </>
                 ))}
@@ -943,8 +943,8 @@ function Footer() {
       </div>
       <div className="border-t border-white/5">
         <div className="max-w-[1240px] mx-auto px-6 py-5 flex items-center justify-between text-[11.5px] font-mono text-white/35">
-          <span>Â© 2026 Drip Labs Â· Open-source MIT</span>
-          <span>{PROTOCOL_STATS.version} Â· {PROTOCOL_STATS.clusterLabel} Â· last block {PROTOCOL_STATS.slot}</span>
+          <span>© 2026 Drip Labs · Open-source MIT</span>
+          <span>{PROTOCOL_STATS.version} · {PROTOCOL_STATS.clusterLabel} · last block {PROTOCOL_STATS.slot}</span>
         </div>
       </div>
     </footer>
