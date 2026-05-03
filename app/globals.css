@@ -13,6 +13,10 @@
   --cyan: #67e8f9;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body {
   background: var(--bg);

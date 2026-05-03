@@ -46,7 +46,7 @@ export const PROTOCOL_STATS: ProtocolStats = {
 export const LANDING_NAV_LINKS = ["Protocol", "Use cases", "Developers", "Ecosystem", "Docs"];
 
 export const LANDING_PROTOCOL_STATS = [
-  { label: "Block time", value: PROTOCOL_STATS.blockTime, hint: "Solana mainnet" },
+  { label: "Block time", value: PROTOCOL_STATS.blockTime, hint: "Solana devnet" },
   { label: "Settlement", value: PROTOCOL_STATS.settlement, hint: "end to end" },
   { label: "Stream fee", value: PROTOCOL_STATS.streamFee, hint: "protocol" },
 ];
@@ -60,8 +60,8 @@ export const LANDING_STREAMING_CARD = {
   fromLabel: "master-agent.sol",
   toAddress: "9Bc1...aL3z",
   toLabel: "deepseek-api.node",
-  token: "USDC",
-  tokenKind: "SPL",
+  token: "SOL",
+  tokenKind: "native",
   txHash: "0x9af...c14",
 };
 
@@ -114,8 +114,8 @@ export const DRIP_PILLARS = [
     n: "iii",
     title: "Audit-Ready",
     icon: "file-check-2",
-    body: "Instant PDF/CSV exports for enterprise-level tax and legal compliance. Every stream is verifiable on-chain - accountants get clean ledgers, auditors get cryptographic receipts.",
-    meta: "IRS Form 8949 · DAC8 · Xero / QuickBooks",
+    body: "CSV exports for tax and accounting workflows. Every stream is verifiable on-chain - accountants get clean ledgers, auditors get cryptographic receipts. PDF export coming soon.",
+    meta: "CSV export · Xero / QuickBooks compatible",
   },
 ];
 
@@ -166,7 +166,7 @@ export const WORKFORCE_DEMO = {
   ratePerSec: 0.0125,
   workerName: "Maya Chen",
   workerHandle: "@maya · maya.sol",
-  hourlyLabel: "$45.00/h · 0.0125 USDC/sec",
+  hourlyLabel: "$45.00/h · 0.0125 SOL/sec (demo)",
   tasks: [
     { name: "Landing page redesign", rate: "$45/h", state: "active" },
     { name: "Component library", rate: "$45/h", state: "queued" },
@@ -201,26 +201,28 @@ export const LANDING_AGENT_DEMO = {
 };
 
 export const DEV_FEATURES = [
-  { icon: "package", title: "npm i drip-sol", desc: "Lightweight client. Works in browser, node, edge runtimes." },
-  { icon: "webhook", title: "Stream webhooks", desc: "React to deposit, withdraw, pause, complete events in real time." },
+  { icon: "package", title: "drip-sol SDK (planned)", desc: "Lightweight client for the Drip program — in development. Anchor IDL available now." },
+  { icon: "webhook", title: "Stream webhooks (roadmap)", desc: "React to deposit, withdraw, pause, complete events in real time." },
   { icon: "file-code-2", title: "Anchor IDL", desc: "On-chain program is open-source. Audit, fork, or extend." },
 ];
 
-export const DEV_CODE_SAMPLE = `<span class="tk-c">// Install: npm i drip-sol @solana/web3.js</span>
-<span class="tk-k">import</span> <span class="tk-p">{</span> <span class="tk-v">drip</span> <span class="tk-p">}</span> <span class="tk-k">from</span> <span class="tk-s">"drip-sol"</span><span class="tk-p">;</span>
+export const DEV_CODE_SAMPLE = `<span class="tk-c">// Drip is live on Solana devnet - drip-sol SDK is planned</span>
+<span class="tk-c">// Use the Anchor client directly today</span>
+
+<span class="tk-k">import</span> <span class="tk-p">*</span> <span class="tk-k">as</span> <span class="tk-v">anchor</span> <span class="tk-k">from</span> <span class="tk-s">"@coral-xyz/anchor"</span><span class="tk-p">;</span>
 <span class="tk-k">import</span> <span class="tk-p">{</span> <span class="tk-v">PublicKey</span> <span class="tk-p">}</span> <span class="tk-k">from</span> <span class="tk-s">"@solana/web3.js"</span><span class="tk-p">;</span>
 
 <span class="tk-k">const</span> <span class="tk-v">receiver</span> <span class="tk-p">=</span> <span class="tk-k">new</span> <span class="tk-f">PublicKey</span><span class="tk-p">(</span><span class="tk-s">"9Bc1...aL3z"</span><span class="tk-p">);</span>
 
-<span class="tk-c">// Open a real-time stream - settles every Solana block.</span>
-<span class="tk-k">const</span> <span class="tk-v">stream</span> <span class="tk-p">=</span> <span class="tk-k">await</span> <span class="tk-v">drip</span><span class="tk-p">.</span><span class="tk-f">createStream</span><span class="tk-p">({</span>
-  <span class="tk-v">to</span><span class="tk-p">:</span>     <span class="tk-v">receiver</span><span class="tk-p">,</span>
-  <span class="tk-v">rate</span><span class="tk-p">:</span>   <span class="tk-n">0.01</span><span class="tk-p">,</span>           <span class="tk-c">// USDC per second</span>
-  <span class="tk-v">token</span><span class="tk-p">:</span>  <span class="tk-s">"USDC"</span><span class="tk-p">,</span>
-  <span class="tk-v">yield</span><span class="tk-p">:</span>  <span class="tk-s">"raydium"</span><span class="tk-p">,</span>      <span class="tk-c">// idle escrow -> APY</span>
-<span class="tk-p">});</span>
-
-<span class="tk-v">stream</span><span class="tk-p">.</span><span class="tk-f">on</span><span class="tk-p">(</span><span class="tk-s">"tick"</span><span class="tk-p">,</span> <span class="tk-p">(</span><span class="tk-v">e</span><span class="tk-p">)</span> <span class="tk-k">=&gt;</span> <span class="tk-v">console</span><span class="tk-p">.</span><span class="tk-f">log</span><span class="tk-p">(</span><span class="tk-v">e</span><span class="tk-p">.</span><span class="tk-v">settled</span><span class="tk-p">));</span>
+<span class="tk-c">// Create a stream - 0.001 SOL/sec, 0.5 SOL deposit</span>
+<span class="tk-k">const</span> <span class="tk-v">tx</span> <span class="tk-p">=</span> <span class="tk-k">await</span> <span class="tk-v">program</span><span class="tk-p">.</span><span class="tk-v">methods</span>
+  <span class="tk-p">.</span><span class="tk-f">createStream</span><span class="tk-p">(</span>
+    <span class="tk-k">new</span> <span class="tk-v">anchor</span><span class="tk-p">.</span><span class="tk-f">BN</span><span class="tk-p">(</span><span class="tk-n">11574</span><span class="tk-p">),</span>         <span class="tk-c">// lamports per second</span>
+    <span class="tk-k">new</span> <span class="tk-v">anchor</span><span class="tk-p">.</span><span class="tk-f">BN</span><span class="tk-p">(</span><span class="tk-n">500_000_000</span><span class="tk-p">),</span>  <span class="tk-c">// deposit (0.5 SOL)</span>
+    <span class="tk-k">new</span> <span class="tk-v">anchor</span><span class="tk-p">.</span><span class="tk-f">BN</span><span class="tk-p">(</span><span class="tk-v">expiresAt</span><span class="tk-p">),</span>     <span class="tk-c">// unix timestamp</span>
+  <span class="tk-p">)</span>
+  <span class="tk-p">.</span><span class="tk-f">accounts</span><span class="tk-p">({</span> <span class="tk-v">receiver</span> <span class="tk-p">})</span>
+  <span class="tk-p">.</span><span class="tk-f">rpc</span><span class="tk-p">();</span>
 `;
 
 export const CALCULATOR_DEMO = {
@@ -237,12 +239,12 @@ export const ECOSYSTEM_PARTNERS = [
   { name: "Raydium", role: "Yield routing (roadmap)", icon: "sprout", note: "Idle escrow yield - coming soon" },
 ];
 
-export const FINAL_CTA_STATS = ["devnet · live", "$2.4M streamed in test", "1,284 active streams"];
+export const FINAL_CTA_STATS = ["devnet · live", "native SOL · MVP", "Anchor · open source"];
 
 export const FOOTER_SOCIALS = ["github", "twitter", "send", "youtube"];
 
 export const FOOTER_LINK_GROUPS = [
-  { title: "Protocol", links: ["Whitepaper", "Architecture", "Security", "Audits", "Status"] },
+  { title: "Protocol", links: ["Whitepaper", "Architecture", "Security", "Status"] },
   { title: "Builders", links: ["Quickstart", "SDK reference", "Examples", "Anchor program", "Grants"] },
   { title: "Company", links: ["Manifesto", "Team", "Press", "Brand kit", "Contact"] },
 ];
@@ -426,8 +428,8 @@ export const COMPLIANCE_DEFAULT_RANGE = { preset: "month", from: "2026-04-01", t
 export const COMPLIANCE_EXPORT = {
   pageSize: 6,
   taxRate: 0.1,
-  networkLabel: "Solana mainnet",
-  ledgerNetworkLabel: "Solana Mainnet",
+  networkLabel: "Solana devnet",
+  ledgerNetworkLabel: "Solana Devnet",
   integrations: ["Xero", "QuickBooks", "Wave"],
   fileStem: "Apr2026",
   secondaryActions: [

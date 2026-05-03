@@ -204,49 +204,65 @@ function Sidebar({ active, onChange, streams }: any) {
 
 function Topbar({ route, onNewStream }: any) {
   const { connected, connecting, publicKeyString, connect, disconnect, providerName } = useDripWallet();
-  const walletLabel = connected ? shortWalletAddress(publicKeyString) : connecting ? "Connecting..." : "Connect Wallet";
+  const walletLabel = connected ? shortWalletAddress(publicKeyString) : connecting ? "Connecting..." : "Connect";
   const walletMeta = connected ? providerName ?? "Solana wallet" : "Solana signer";
 
   const handleWalletClick = () => {
-    if (connected) {
-      void disconnect?.();
-      return;
-    }
-
+    if (connected) { void disconnect?.(); return; }
     void connect?.();
   };
 
   return (
     <div className="sticky top-0 z-30 backdrop-blur-md border-b border-white/5 bg-[#070612]/70">
-      <div className="flex items-center gap-3 px-8 py-3.5">
-        <div className="flex items-center gap-2.5 text-[13px] text-white/45 font-mono">
-          <span>Drip</span>
-          <Icon name="chevron-right" size={12} />
-          <span className="text-white/85">{DASHBOARD_ROUTE_LABELS[route]}</span>
+      <div className="flex items-center gap-2 px-4 sm:px-8 py-3.5">
+        <div className="flex items-center gap-2 text-[13px] text-white/45 font-mono min-w-0">
+          <span className="lg:hidden font-medium text-white/60 shrink-0">Drip</span>
+          <Icon name="chevron-right" size={12} className="lg:hidden shrink-0" />
+          <span className="text-white/85 truncate">{DASHBOARD_ROUTE_LABELS[route]}</span>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.02] text-[12.5px] text-white/55 w-[260px]">
             <Icon name="search" size={13} />
             <span className="flex-1">Search streams, addresses, txns...</span>
-            <span className="font-mono text-[10px] text-white/35 px-1.5 rounded border border-white/10">âŒ˜K</span>
+            <span className="font-mono text-[10px] text-white/35 px-1.5 rounded border border-white/10">⌘K</span>
           </div>
-          <button className="btn-ghost rounded-full w-9 h-9 flex items-center justify-center text-white/60 hover:text-white">
+          <button className="hidden sm:flex btn-ghost rounded-full w-9 h-9 items-center justify-center text-white/60 hover:text-white">
             <Icon name="bell" size={14} />
           </button>
-          <button onClick={onNewStream} className="btn-primary rounded-full px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
-            <Icon name="plus" size={14} /> New stream
+          <button onClick={onNewStream} className="btn-primary rounded-full px-2.5 sm:px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
+            <Icon name="plus" size={14} />
+            <span className="hidden sm:inline">New stream</span>
           </button>
-          <button onClick={handleWalletClick} className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-white/10 hover:border-violet-400/30 transition">
-            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500" />
-            <div className="text-left leading-tight">
+          <button onClick={handleWalletClick} className="flex items-center gap-1.5 pl-1.5 pr-2 sm:pr-3 py-1 rounded-full border border-white/10 hover:border-violet-400/30 transition">
+            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 shrink-0" />
+            <div className="text-left leading-tight hidden sm:block">
               <div className="text-[12px] text-white">{walletLabel}</div>
               <div className="text-[10px] font-mono text-white/45">{walletMeta}</div>
             </div>
-            <Icon name="chevron-down" size={12} className="text-white/40 ml-1" />
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function MobileBottomNav({ active, onChange }: any) {
+  const items = DASHBOARD_NAV_ITEMS.slice(0, 5);
+  return (
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#07060f]/95 backdrop-blur-md safe-area-inset-bottom">
+      <div className="flex items-center">
+        {items.map((item) => (
+          <button
+            key={item.k}
+            onClick={() => onChange(item.k)}
+            className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 px-1 transition ${active === item.k ? "text-violet-300" : "text-white/40"}`}
+          >
+            <Icon name={item.icon} size={18} />
+            <span className="text-[9.5px] font-mono">{item.label.split(" ")[0]}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -258,7 +274,7 @@ function PageHeader({ eyebrow, title, sub, right }: any) {
     <div className="flex items-end justify-between flex-wrap gap-4 mb-2">
       <div>
         <div className="text-[11px] uppercase tracking-[0.22em] text-violet-300/70 font-mono">{eyebrow}</div>
-        <h1 className="mt-2 text-[34px] leading-[1.05] tracking-[-0.02em] font-medium text-iri">{title}</h1>
+        <h1 className="mt-2 text-[22px] sm:text-[34px] leading-[1.05] tracking-[-0.02em] font-medium text-iri">{title}</h1>
         {sub && <p className="mt-2 text-[14px] text-white/55 max-w-[600px] leading-[1.55]">{sub}</p>}
       </div>
       {right}
@@ -316,7 +332,7 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
         title={<>Your money, in motion.</>}
         sub="The Net Flow Engine settles your incoming and outgoing streams every Solana block. Everything below ticks live."
         right={
-          <button onClick={onNewStream} className="btn-primary rounded-full px-5 py-3 text-[13.5px] font-medium text-white flex items-center gap-2">
+          <button onClick={onNewStream} className="hidden sm:flex btn-primary rounded-full px-5 py-3 text-[13.5px] font-medium text-white items-center gap-2">
             <Icon name="zap" size={14} /> Create new stream
           </button>
         }
@@ -328,7 +344,7 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
       <section className="grad-border glass-strong rounded-3xl p-1.5 relative overflow-hidden">
         <div className="absolute -top-24 -right-24 w-72 h-72 iri-orb rounded-full opacity-50" />
         <div className="absolute -bottom-32 -left-24 w-72 h-72 glow-orb opacity-30" />
-        <div className="rounded-[22px] bg-gradient-to-br from-[#100e26]/95 to-[#07060f] p-8 relative">
+        <div className="rounded-[22px] bg-gradient-to-br from-[#100e26]/95 to-[#07060f] p-5 sm:p-8 relative">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.2em] text-violet-300/80">
@@ -364,11 +380,11 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
             <div className="lg:col-span-7">
               <div className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Streaming balance · USDC</div>
               <div className="mt-3 flex items-baseline gap-1 num-stable">
-                <span className="text-white/40 text-[36px] font-num">$</span>
-                <span className="text-iri text-[72px] font-num leading-[0.95] tracking-[-0.025em]">{whole}</span>
-                <span className="text-iri text-[72px] font-num leading-[0.95] tracking-[-0.025em]">.</span>
-                <span className="text-iri text-[72px] font-num leading-[0.95] tracking-[-0.025em]">{stableDec}</span>
-                <span className="text-violet-300/90 text-[36px] font-num leading-[0.95] tracking-[-0.025em]">{fastDec}</span>
+                <span className="text-white/40 text-[22px] sm:text-[30px] lg:text-[36px] font-num">$</span>
+                <span className="text-iri text-[44px] sm:text-[58px] lg:text-[72px] font-num leading-[0.95] tracking-[-0.025em]">{whole}</span>
+                <span className="text-iri text-[44px] sm:text-[58px] lg:text-[72px] font-num leading-[0.95] tracking-[-0.025em]">.</span>
+                <span className="text-iri text-[44px] sm:text-[58px] lg:text-[72px] font-num leading-[0.95] tracking-[-0.025em]">{stableDec}</span>
+                <span className="text-violet-300/90 text-[22px] sm:text-[30px] lg:text-[36px] font-num leading-[0.95] tracking-[-0.025em]">{fastDec}</span>
               </div>
 
               {/* Pulse indicator */}
@@ -387,7 +403,7 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
               </div>
             </div>
 
-            <div className="lg:col-span-5">
+            <div className="hidden sm:block lg:col-span-5">
               <FlowSparkline net={net} />
             </div>
           </div>
@@ -450,7 +466,7 @@ function SummaryTile({ icon, label, value, sub, accent, onClick }: any) {
         {onClick && <Icon name="arrow-up-right" size={14} className="text-white/30" />}
       </div>
       <div className="mt-5 text-[10.5px] uppercase tracking-[0.18em] text-white/40 font-mono">{label}</div>
-      <div className={`mt-2 font-num num-stable ${accent ? "text-iri text-[34px]" : "text-white text-[28px]"} leading-none tracking-[-0.02em]`}>{value}</div>
+      <div className={`mt-2 font-num num-stable ${accent ? "text-iri text-[24px] sm:text-[34px]" : "text-white text-[20px] sm:text-[28px]"} leading-none tracking-[-0.02em]`}>{value}</div>
       <div className="mt-2 text-[12px] text-white/45">{sub}</div>
     </button>
   );
@@ -458,26 +474,23 @@ function SummaryTile({ icon, label, value, sub, accent, onClick }: any) {
 
 function MiniStreamRow({ stream }: any) {
   const running = stream.status === "streaming";
-  // stream.base is already the current accumulated amount (pre-computed in createSeedStreams
-  // or set to unlocked-at-refresh in useDripStreams). Passing it directly avoids
-  // computing Date.now() during render, which caused SSR/client hydration mismatches.
   const value = useStreamingValue(stream.base, stream.rate, running);
   const isIn = stream.dir === "in";
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 flex items-center gap-4">
-      <SolAvatar seed={stream.party} size={36} />
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 sm:p-4 flex items-center gap-3">
+      <SolAvatar seed={stream.party} size={32} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[13.5px] text-white truncate">{stream.party}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] text-white truncate">{stream.party}</span>
           <StatusPill status={stream.status} mini />
         </div>
-        <div className="text-[11px] font-mono text-white/40 truncate">{stream.label}</div>
+        <div className="text-[10.5px] font-mono text-white/40 truncate">{stream.label}</div>
       </div>
-      <div className="text-right">
-        <div className={`font-num num-stable text-[16px] ${isIn ? "text-emerald-300" : "text-rose-300"}`}>
-          {isIn ? "+" : "-"}${fmtUSD(value, 4)}
+      <div className="text-right shrink-0">
+        <div className={`font-num num-stable text-[14px] ${isIn ? "text-emerald-300" : "text-rose-300"}`}>
+          {isIn ? "+" : "-"}${fmtUSD(value, 2)}
         </div>
-        <div className="text-[10.5px] font-mono text-white/40">{stream.rate.toFixed(6)} {stream.token}/s</div>
+        <div className="text-[10px] font-mono text-white/35">{stream.rate.toFixed(5)}/s</div>
       </div>
     </div>
   );
@@ -1052,15 +1065,15 @@ function YieldPage({ streams, walletConnected, onRequireWallet }: any) {
 
 function YieldStat({ icon, label, value, sub, tone }: any) {
   return (
-    <div className="rounded-2xl glass p-6">
+    <div className="rounded-2xl glass p-4 sm:p-6 overflow-hidden">
       <div className="flex items-center justify-between">
-        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-violet-200">
-          <Icon name={icon} size={17} />
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/5 flex items-center justify-center text-violet-200">
+          <Icon name={icon} size={16} />
         </div>
       </div>
-      <div className="mt-5 text-[10.5px] uppercase tracking-[0.18em] text-white/40 font-mono">{label}</div>
-      <div className={`mt-1.5 font-num num-stable text-[26px] leading-tight ${tone === "up" ? "text-emerald-300" : "text-white"}`}>{value}</div>
-      <div className="mt-1 text-[12px] text-white/45">{sub}</div>
+      <div className="mt-3 sm:mt-5 text-[9.5px] sm:text-[10.5px] uppercase tracking-[0.16em] text-white/40 font-mono truncate">{label}</div>
+      <div className={`mt-1 font-num num-stable text-[18px] sm:text-[26px] leading-tight break-all ${tone === "up" ? "text-emerald-300" : "text-white"}`}>{value}</div>
+      <div className="mt-1 text-[11px] text-white/45 truncate">{sub}</div>
     </div>
   );
 }
@@ -1228,7 +1241,7 @@ function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingM
         title={<>The autonomous economy.</>}
         sub="Agents hire other agents and pay them per token of compute. Settlement happens at the speed of inference - sub-second, sub-cent."
         right={
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             <button onClick={() => setPaused(p => !p)} className="btn-ghost rounded-full px-4 py-2 text-[13px] text-white/85 flex items-center gap-2">
               <Icon name={paused ? "play" : "pause"} size={13} /> {paused ? "Resume" : "Pause"} mesh
             </button>
@@ -1239,10 +1252,20 @@ function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingM
         }
       />
 
+      {/* Mobile pause button */}
+      <div className="sm:hidden flex items-center gap-2">
+        <button onClick={() => setPaused(p => !p)} className="btn-ghost rounded-full px-4 py-2 text-[13px] text-white/85 flex items-center gap-2">
+          <Icon name={paused ? "play" : "pause"} size={13} /> {paused ? "Resume" : "Pause"} mesh
+        </button>
+        <button onClick={onNewStream} className="btn-primary rounded-full px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
+          <Icon name="plus" size={13} /> New agent stream
+        </button>
+      </div>
+
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <YieldStat icon="bot" label="Connected agents" value={`${AGENTS.length}`} sub={`${AGENTS.filter(a => a.status === "active").length} active`} />
-        <YieldStat icon="zap" label="Combined rate" value={`${totalRate.toFixed(9)}/s`} sub="SOL/s across mesh" />
-        <YieldStat icon="layers" label="Simulated session spend" value={`${fmtUSD(totalSpent, 6)} SOL`} sub="demo simulation" tone="up" />
+        <YieldStat icon="bot" label="Agents" value={`${AGENTS.length}`} sub={`${AGENTS.filter(a => a.status === "active").length} active`} />
+        <YieldStat icon="zap" label="Combined rate" value={`${totalRate.toFixed(7)}/s`} sub="SOL/s mesh" />
+        <YieldStat icon="layers" label="Session spend" value={`${fmtUSD(totalSpent, 4)} SOL`} sub="demo simulation" tone="up" />
         <YieldStat icon="activity" label="Settlements" value={`${log.length * 24 + AGENT_LOG_DEMO.baseSettlements}`} sub="last hour" />
       </section>
 
@@ -1379,27 +1402,29 @@ function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingM
                 {paused ? "PAUSED" : "TAILING"}
               </span>
             </div>
-            <div className="font-mono text-[12px] p-4 h-[420px] overflow-hidden">
+            <div className="font-mono text-[11px] p-3 sm:p-4 h-[420px] overflow-y-auto overflow-x-hidden">
               {/* Demo banner */}
-              <div className="text-[10.5px] text-amber-300/60 mb-3 pb-2 border-b border-amber-400/15">
+              <div className="text-[9.5px] text-amber-300/60 mb-3 pb-2 border-b border-amber-400/15 break-words">
                 [DEMO SIMULATION - terminal activity is not real on-chain execution]
               </div>
               {log.length === 0 && (
-                <div className="text-white/40 text-[11.5px]">$ drip research-agent tail --follow ... waiting for inference events</div>
+                <div className="text-white/40 text-[10.5px]">$ drip tail --follow ... waiting</div>
               )}
               {log.map((l, i) => (
                 <div
                   key={l.id}
-                  className="flex items-baseline gap-2 py-1 border-b border-white/[0.03]"
+                  className="py-1.5 border-b border-white/[0.03]"
                   style={{ opacity: Math.max(0.25, 1 - i * 0.04) }}
                 >
-                  <span className="text-white/35">{l.time}</span>
-                  <span className="text-violet-300">{l.agent}</span>
-                  <span className="text-white/40">{l.verb}</span>
-                  <span className="text-emerald-300">+{l.amt} SOL</span>
-                  <span className="text-white/40">-&gt;</span>
-                  <span className="text-cyan-300">{l.target}</span>
-                  <span className="ml-auto text-white/35">{l.tokens} tok</span>
+                  <div className="flex items-baseline gap-1.5 flex-wrap">
+                    <span className="text-white/35 shrink-0">{l.time}</span>
+                    <span className="text-violet-300 shrink-0">{l.agent}</span>
+                    <span className="text-white/40 shrink-0">{l.verb}</span>
+                    <span className="text-emerald-300 shrink-0">+{l.amt} SOL</span>
+                    <span className="text-white/30 shrink-0">→</span>
+                    <span className="text-cyan-300 truncate min-w-0">{l.target}</span>
+                    <span className="ml-auto text-white/30 shrink-0">{l.tokens}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -2091,7 +2116,8 @@ export default function DashboardApp() {
       <Sidebar active={route} onChange={handleRouteChange} streams={streams} />
       <div className="flex-1 min-w-0">
         <Topbar route={route} onNewStream={openNewStream} />
-        <main className="px-8 py-7 max-w-[1480px]">
+        <MobileBottomNav active={route} onChange={handleRouteChange} />
+        <main className="px-4 py-5 sm:px-8 sm:py-7 max-w-[1480px] pb-24 lg:pb-10">
           {walletPrompt && !connected && (
             <div className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-[12.5px] text-amber-100/90 flex items-center gap-2">
               <Icon name="triangle-alert" size={14} className="text-amber-200" />

@@ -79,7 +79,16 @@ function Backdrop() {
 // =========================================================================
 // Nav
 // =========================================================================
+const NAV_LINKS = [
+  { label: "Protocol", href: "#why-drip" },
+  { label: "Use cases", href: "#use-cases" },
+  { label: "Developers", href: "#developers" },
+  { label: "Ecosystem", href: "#ecosystem" },
+  { label: "Docs", href: "#developers" },
+];
+
 function Nav() {
+  const [mobileOpen, setMobileOpen] = useState(false);
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md">
       <div className="max-w-[1240px] mx-auto px-6 py-4 flex items-center justify-between">
@@ -87,28 +96,65 @@ function Nav() {
           <a href="#" className="flex items-center gap-2.5 group">
             <DripMark />
             <span className="font-medium tracking-tight text-[17px]">Drip</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-violet-300/70 ml-1 px-1.5 py-0.5 rounded border border-violet-400/20">{PROTOCOL_STATS.version} · devnet</span>
+            <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-[0.18em] text-violet-300/70 ml-1 px-1.5 py-0.5 rounded border border-violet-400/20">{PROTOCOL_STATS.version} · devnet</span>
           </a>
           <nav className="hidden md:flex items-center gap-1">
-            {LANDING_NAV_LINKS.map((l) => (
-              <a key={l} href="#" className="text-[13.5px] text-white/60 hover:text-white px-3 py-1.5 rounded-md transition">
-                {l}
+            {NAV_LINKS.map((link) => (
+              <a key={link.label} href={link.href} className="text-[13.5px] text-white/60 hover:text-white px-3 py-1.5 rounded-md transition">
+                {link.label}
               </a>
             ))}
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <a href="#" className="hidden md:flex items-center gap-2 text-[13px] text-white/60 hover:text-white px-3 py-2">
+          <a
+            href="https://github.com/zkzora/drip"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:flex items-center gap-2 text-[13px] text-white/60 hover:text-white px-3 py-2 transition"
+          >
             <Icon name="github" size={15} /> GitHub
           </a>
-          <button className="btn-ghost rounded-full px-4 py-2 text-[13px] text-white/85 hover:text-white">
+          <a href="/dashboard" className="hidden md:flex btn-ghost rounded-full px-4 py-2 text-[13px] text-white/85 hover:text-white items-center">
             Sign in
-          </button>
+          </a>
           <a href="/dashboard" className="btn-primary rounded-full px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
             Launch app <Icon name="arrow-up-right" size={14} />
           </a>
+          <button
+            className="md:hidden w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:text-white"
+            onClick={() => setMobileOpen((o) => !o)}
+            aria-label="Toggle menu"
+          >
+            <Icon name={mobileOpen ? "x" : "menu"} size={16} />
+          </button>
         </div>
       </div>
+      {mobileOpen && (
+        <div className="md:hidden border-t border-white/5 bg-[#07060f]/95 backdrop-blur-md px-6 py-4 flex flex-col gap-1">
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              onClick={() => setMobileOpen(false)}
+              className="text-[14px] text-white/70 hover:text-white py-2.5 border-b border-white/5 last:border-0"
+            >
+              {link.label}
+            </a>
+          ))}
+          <a
+            href="https://github.com/zkzora/drip"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-[14px] text-white/70 hover:text-white py-2.5 mt-1"
+          >
+            <Icon name="github" size={15} /> GitHub
+          </a>
+          <a href="/dashboard" className="flex items-center gap-2 text-[14px] text-white/70 hover:text-white py-2.5">
+            <Icon name="arrow-up-right" size={15} /> Sign in to app
+          </a>
+        </div>
+      )}
     </header>
   );
 }
@@ -150,10 +196,10 @@ function Hero() {
             <span>2026 cohort</span>
           </div>
 
-          <h1 className="text-[68px] leading-[1.02] font-medium tracking-[-0.025em] text-iri">
+          <h1 className="text-[38px] sm:text-[52px] lg:text-[68px] leading-[1.02] font-medium tracking-[-0.025em] text-iri">
             Programmable Cashflow<br />for AI Agents.
           </h1>
-          <p className="mt-7 text-[18.5px] text-white/65 leading-[1.55] max-w-[580px]">
+          <p className="mt-6 text-[15px] sm:text-[18.5px] text-white/65 leading-[1.55] max-w-[580px]">
             Drip is the first streaming payment protocol built for the autonomous agent economy. Set spending policies, stream funds per-second, and automate compliance on Solana.
           </p>
 
@@ -164,20 +210,20 @@ function Hero() {
             <button className="btn-ghost rounded-full px-5 py-3 text-[14px] text-white/90 flex items-center gap-2">
               <Icon name="terminal" size={15} /> Build on Drip
             </button>
-            <a href="#calc" className="text-[13.5px] text-white/55 hover:text-white px-2 py-2 flex items-center gap-1.5">
-              View whitepaper <Icon name="arrow-right" size={13} />
+            <a href="#why-drip" className="text-[13.5px] text-white/55 hover:text-white px-2 py-2 flex items-center gap-1.5">
+              Learn more <Icon name="arrow-right" size={13} />
             </a>
           </div>
 
           {/* Stats strip */}
-          <div className="mt-14 grid grid-cols-3 gap-6 max-w-[520px]">
+          <div className="mt-10 grid grid-cols-3 gap-4 sm:gap-6 max-w-[520px]">
             {LANDING_PROTOCOL_STATS.map((stat) => (
               <Stat key={stat.label} label={stat.label} value={stat.value} hint={stat.hint} />
             ))}
           </div>
         </div>
 
-        <div className="lg:col-span-5 lg:pl-4">
+        <div className="hidden lg:block lg:col-span-5 lg:pl-4">
           <StreamingCard />
         </div>
       </div>
@@ -189,7 +235,7 @@ function Stat({ label, value, hint }: any) {
   return (
     <div className="border-l border-violet-400/20 pl-4">
       <div className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-mono">{label}</div>
-      <div className="mt-1.5 text-[22px] font-num text-white">{value}</div>
+      <div className="mt-1.5 text-[18px] sm:text-[22px] font-num text-white">{value}</div>
       <div className="text-[11px] text-white/40 mt-0.5">{hint}</div>
     </div>
   );
@@ -258,9 +304,9 @@ function StreamingCard() {
           </div>
           <div className="mt-2.5 flex items-center gap-2 text-[11.5px] text-white/40 font-mono">
             <Icon name="trending-up" size={12} className="text-emerald-300/80" />
-            <span className="text-emerald-300/80">+{(RATE).toFixed(3)} USDC/sec</span>
+            <span className="text-emerald-300/80">+{(RATE).toFixed(3)} SOL/sec (demo)</span>
             <span>·</span>
-            <span>= ${(RATE * 86400).toFixed(2)}/day</span>
+            <span>= {(RATE * 86400).toFixed(2)} SOL/day</span>
           </div>
         </div>
 
@@ -370,7 +416,7 @@ function PartnersStrip() {
 // =========================================================================
 function WhyDrip() {
   return (
-    <section className="relative py-28">
+    <section id="why-drip" className="relative py-16 sm:py-28">
       <div className="max-w-[1240px] mx-auto px-6">
         <SectionHeader
           eyebrow="01  -  Why Drip"
@@ -458,8 +504,8 @@ function SectionHeader({ eyebrow, title, sub }: any) {
   return (
     <div className="max-w-[760px]">
       <div className="text-[11px] uppercase tracking-[0.22em] text-violet-300/70 font-mono">{eyebrow}</div>
-      <h2 className="mt-4 text-[46px] leading-[1.05] font-medium tracking-[-0.02em] text-iri">{title}</h2>
-      {sub && <p className="mt-5 text-[16px] text-white/55 leading-[1.6] max-w-[640px]">{sub}</p>}
+      <h2 className="mt-4 text-[28px] sm:text-[36px] lg:text-[46px] leading-[1.05] font-medium tracking-[-0.02em] text-iri">{title}</h2>
+      {sub && <p className="mt-5 text-[15px] sm:text-[16px] text-white/55 leading-[1.6]">{sub}</p>}
     </div>
   );
 }
@@ -472,7 +518,7 @@ function UseCases() {
   const c = LANDING_USE_CASES[active];
 
   return (
-    <section className="relative py-28">
+    <section id="use-cases" className="relative py-16 sm:py-28">
       <div className="max-w-[1240px] mx-auto px-6">
         <SectionHeader
           eyebrow="02  -  Use cases"
@@ -499,7 +545,7 @@ function UseCases() {
 
         {/* Detail panel */}
         <div className="mt-6 grid lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-5 rounded-3xl glass p-8">
+          <div className="lg:col-span-5 rounded-3xl glass p-6 sm:p-8">
             <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-violet-300/70">{c.tag}</div>
             <h3 className="mt-3 text-[34px] leading-[1.1] font-medium tracking-[-0.02em] text-iri">{c.title}</h3>
             <p className="mt-5 text-[15.5px] text-white/65 leading-[1.6]">{c.lede}</p>
@@ -614,7 +660,7 @@ function DemoSubs() {
           </div>
           <div className="mt-2 flex items-center justify-between text-[10.5px] font-mono text-white/55">
             <span>{SUBSCRIPTION_DEMO.progressLabel}</span>
-            <span>{playing ? `STREAMING · ${SUBSCRIPTION_DEMO.ratePerSec.toFixed(6)} USDC/s` : "PAUSED · 0.000000 USDC/s"}</span>
+            <span>{playing ? `STREAMING · ${SUBSCRIPTION_DEMO.ratePerSec.toFixed(6)} SOL/s (demo)` : "PAUSED · 0.000000 SOL/s"}</span>
           </div>
         </div>
       </div>
@@ -670,7 +716,7 @@ function DemoAgents() {
                 <span className="font-mono text-[12px] text-violet-200">{e.from}</span>
                 <Icon name="arrow-right" size={12} className="text-white/30" />
                 <span className="font-mono text-[12px] text-cyan-200">{e.to}</span>
-                <span className="ml-auto font-mono text-[12px] text-emerald-300">+{e.amt} USDC</span>
+                <span className="ml-auto font-mono text-[12px] text-emerald-300">+{e.amt} SOL</span>
               </div>
             );
           })}
@@ -701,19 +747,19 @@ function MiniStat({ label, value }: any) {
 // =========================================================================
 function Developers() {
   return (
-    <section id="calc" className="relative py-28">
+    <section id="developers" className="relative py-16 sm:py-28">
       <div className="max-w-[1240px] mx-auto px-6">
         <SectionHeader
           eyebrow="03  -  Developer experience"
           title={<>Three lines to a live stream.</>}
-          sub="The drip-sol SDK abstracts PDAs, escrow accounts and time-math so you can focus on product. Typed, tree-shakable, devnet-ready."
+          sub="The Drip Anchor program is live on devnet. Interact directly with the IDL today, or wait for the planned drip-sol SDK."
         />
 
         <div className="mt-12 grid lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-7 min-w-0 overflow-hidden">
             <CodeBlock />
           </div>
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-5 min-w-0">
             <Calculator />
           </div>
         </div>
@@ -780,7 +826,7 @@ function Calculator() {
   const earned = useStreamingValue(0, perSec, running);
 
   return (
-    <div className="rounded-3xl glass-strong p-7 h-full relative overflow-hidden">
+    <div className="rounded-3xl glass-strong p-5 sm:p-7 h-full relative overflow-hidden">
       <div className="absolute -top-20 -right-20 w-52 h-52 iri-orb rounded-full opacity-40" />
       <div className="flex items-center justify-between relative">
         <div>
@@ -791,7 +837,7 @@ function Calculator() {
       </div>
 
       <div className="mt-6">
-        <label className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-mono">Total amount per month (USDC)</label>
+        <label className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-mono">Total amount per month (SOL)</label>
         <div className="mt-2 flex items-center gap-3">
           <span className="text-white/50 text-[26px] font-num">$</span>
           <input
@@ -816,11 +862,11 @@ function Calculator() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-2.5 text-[13px]">
-        <CalcRow label="per second" value={`$${perSec.toFixed(7)}`} accent />
-        <CalcRow label="per minute" value={`$${perMin.toFixed(4)}`} />
-        <CalcRow label="per hour"   value={`$${perHour.toFixed(2)}`} />
-        <CalcRow label="per day"    value={`$${perDay.toFixed(2)}`} />
+      <div className="mt-6 grid grid-cols-2 gap-2 text-[13px]">
+        <CalcRow label="per second" value={`${perSec.toFixed(7)}`} accent />
+        <CalcRow label="per minute" value={`${perMin.toFixed(4)}`} />
+        <CalcRow label="per hour"   value={`${perHour.toFixed(2)}`} />
+        <CalcRow label="per day"    value={`${perDay.toFixed(2)}`} />
       </div>
 
       <div className="mt-6 rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4">
@@ -839,9 +885,9 @@ function Calculator() {
 
 function CalcRow({ label, value, accent }: any) {
   return (
-    <div className={`rounded-xl px-4 py-3 border ${accent ? "border-violet-400/30 bg-violet-400/5" : "border-white/5 bg-white/[0.02]"}`}>
-      <div className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-mono">{label}</div>
-      <div className={`mt-1 font-num num-stable ${accent ? "text-iri text-[18px]" : "text-white/85 text-[15px]"}`}>{value}</div>
+    <div className={`rounded-xl px-3 py-3 border overflow-hidden ${accent ? "border-violet-400/30 bg-violet-400/5" : "border-white/5 bg-white/[0.02]"}`}>
+      <div className="text-[9.5px] uppercase tracking-[0.14em] text-white/40 font-mono truncate">{label}</div>
+      <div className={`mt-1 font-num num-stable break-all ${accent ? "text-iri text-[15px] sm:text-[18px]" : "text-white/85 text-[13px] sm:text-[15px]"}`}>{value}</div>
     </div>
   );
 }
@@ -851,7 +897,7 @@ function CalcRow({ label, value, accent }: any) {
 // =========================================================================
 function Ecosystem() {
   return (
-    <section className="relative py-24">
+    <section id="ecosystem" className="relative py-24">
       <div className="max-w-[1240px] mx-auto px-6">
         <SectionHeader
           eyebrow="04  -  Trust & ecosystem"
@@ -886,11 +932,11 @@ function FinalCTA() {
     <section className="relative py-24">
       <div className="max-w-[1240px] mx-auto px-6">
         <div className="relative rounded-[32px] grad-border glass-strong p-1.5 overflow-hidden">
-          <div className="rounded-[28px] bg-gradient-to-br from-[#0e0c25] to-[#07060f] p-14 relative overflow-hidden">
+          <div className="rounded-[28px] bg-gradient-to-br from-[#0e0c25] to-[#07060f] px-6 py-12 sm:p-14 relative overflow-hidden">
             <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[400px] glow-orb opacity-50" />
             <div className="relative max-w-[640px] mx-auto text-center">
               <div className="text-[11px] uppercase tracking-[0.22em] text-violet-300/70 font-mono">Start streaming</div>
-              <h2 className="mt-4 text-[52px] leading-[1.05] font-medium tracking-[-0.025em] text-iri">
+              <h2 className="mt-4 text-[32px] sm:text-[42px] lg:text-[52px] leading-[1.05] font-medium tracking-[-0.025em] text-iri">
                 Make money flow at the<br />speed of the network.
               </h2>
               <p className="mt-5 text-[15.5px] text-white/55 leading-[1.6]">
@@ -923,8 +969,8 @@ function FinalCTA() {
 function Footer() {
   return (
     <footer className="border-t border-white/5 mt-12">
-      <div className="max-w-[1240px] mx-auto px-6 py-14 grid md:grid-cols-12 gap-8">
-        <div className="md:col-span-4">
+      <div className="max-w-[1240px] mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-12 gap-8">
+        <div className="col-span-2 md:col-span-4">
           <div className="flex items-center gap-2.5">
             <DripMark size={26} />
             <span className="font-medium tracking-tight text-[16px]">Drip</span>
@@ -946,7 +992,7 @@ function Footer() {
         ))}
       </div>
       <div className="border-t border-white/5">
-        <div className="max-w-[1240px] mx-auto px-6 py-5 flex items-center justify-between text-[11.5px] font-mono text-white/35">
+        <div className="max-w-[1240px] mx-auto px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11.5px] font-mono text-white/35">
           <span>© 2026 Drip Labs · Open-source MIT</span>
           <span>{PROTOCOL_STATS.version} · {PROTOCOL_STATS.clusterLabel} · last block {PROTOCOL_STATS.slot}</span>
         </div>
@@ -957,7 +1003,7 @@ function Footer() {
 
 function FooterCol({ title, links }: any) {
   return (
-    <div className="md:col-span-2">
+    <div className="col-span-1 md:col-span-2">
       <div className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-mono">{title}</div>
       <ul className="mt-4 space-y-2.5">
         {links.map((l) => (
