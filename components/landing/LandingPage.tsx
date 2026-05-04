@@ -160,22 +160,7 @@ function Nav() {
 }
 
 function DripMark({ size = 28 }: any) {
-  return (
-    <span className="relative inline-block" style={{ width: size, height: size }}>
-      <span className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(167,139,250,0.7), transparent 70%)", filter: "blur(6px)" }} />
-      <svg viewBox="0 0 32 32" width={size} height={size} className="relative">
-        <defs>
-          <linearGradient id="dripGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#f0abfc" />
-            <stop offset="50%" stopColor="#a78bfa" />
-            <stop offset="100%" stopColor="#67e8f9" />
-          </linearGradient>
-        </defs>
-        <path d="M16 3 C 22 12, 26 17, 26 22 a 10 10 0 1 1 -20 0 C 6 17, 10 12, 16 3 Z" fill="url(#dripGrad)" />
-        <path d="M13 18 C 13 22, 19 22, 19 18" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-      </svg>
-    </span>
-  );
+  return <img src="/logo.png" width={size} height={size} alt="Drip" style={{ display: "inline-block" }} />;
 }
 
 // =========================================================================
@@ -296,7 +281,7 @@ function StreamingCard() {
         <div className="mt-7">
           <div className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Received · {LANDING_STREAMING_CARD.token}</div>
           <div className="mt-3 flex items-baseline gap-1 num-stable">
-            <span className="text-white/40 text-[34px] font-num">$</span>
+            <span className="text-white/40 text-[34px] font-num">◎</span>
             <span className="text-iri text-[58px] font-num leading-none tracking-[-0.02em]">{whole}</span>
             <span className="text-iri text-[58px] font-num leading-none tracking-[-0.02em]">.</span>
             <span className="text-iri text-[58px] font-num leading-none tracking-[-0.02em]">{stableDec}</span>
@@ -304,9 +289,9 @@ function StreamingCard() {
           </div>
           <div className="mt-2.5 flex items-center gap-2 text-[11.5px] text-white/40 font-mono">
             <Icon name="trending-up" size={12} className="text-emerald-300/80" />
-            <span className="text-emerald-300/80">+{(RATE).toFixed(3)} SOL/sec (demo)</span>
+            <span className="text-emerald-300/80">+{(RATE).toFixed(6)} SOL/sec (demo)</span>
             <span>·</span>
-            <span>= {(RATE * 86400).toFixed(2)} SOL/day</span>
+            <span>= {(RATE * 86400).toFixed(4)} SOL/day</span>
           </div>
         </div>
 

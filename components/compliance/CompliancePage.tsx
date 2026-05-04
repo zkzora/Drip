@@ -267,7 +267,7 @@ export default function CompliancePage() {
       <PageHeader
         eyebrow="07 - Reports & Compliance"
         title={<>Audit-ready, in three clicks.</>}
-        sub="Generate PDF reports and accountant-ready CSVs straight from on-chain stream data. Every row is verifiable on Solscan. Built for tax season, not invented for it."
+        sub="CSV export is live - download accountant-ready records straight from on-chain stream data. Every row is verifiable on Solscan. PDF export coming next."
         right={
           <div className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-full border border-emerald-400/30 bg-emerald-400/5 text-[12px] font-mono">
             <Icon name="shield-check" size={12} className="text-emerald-300" />
@@ -395,10 +395,10 @@ export default function CompliancePage() {
             </>
           ) : (
             <>
-              <SummaryMetric icon="arrow-up-right" label="Total streamed (out)" value={`$${fmtUSD2(totals.out)}`} sub={`${filtered.filter((r: any) => r.type === "out").length} outgoing streams`} tone="down" />
-              <SummaryMetric icon="arrow-down-left" label="Total received (in)" value={`$${fmtUSD2(totals.in)}`} sub={`${filtered.filter((r: any) => r.type === "in").length} incoming streams`} tone="up" />
-              <SummaryMetric icon="scale" label="Net position" value={`${totals.net >= 0 ? "+" : "-"}$${fmtUSD2(Math.abs(totals.net))}`} sub="received - streamed" tone={totals.net >= 0 ? "up" : "down"} />
-              <SummaryMetric icon="landmark" label="Estimated tax liability" value={`$${fmtUSD2(totals.tax)}`} sub="10% flat · indicative only" tone="accent" emphasize />
+              <SummaryMetric icon="arrow-up-right" label="Total streamed (out)" value={`◎${fmtSol4(totals.out)}`} sub={`${filtered.filter((r: any) => r.type === "out").length} outgoing streams`} tone="down" />
+              <SummaryMetric icon="arrow-down-left" label="Total received (in)" value={`◎${fmtSol4(totals.in)}`} sub={`${filtered.filter((r: any) => r.type === "in").length} incoming streams`} tone="up" />
+              <SummaryMetric icon="scale" label="Net position" value={`${totals.net >= 0 ? "+" : "-"}◎${fmtSol4(Math.abs(totals.net))}`} sub="received - streamed" tone={totals.net >= 0 ? "up" : "down"} />
+              <SummaryMetric icon="landmark" label="Estimated tax liability" value={`◎${fmtSol4(totals.tax)}`} sub="10% flat - indicative only" tone="accent" emphasize />
             </>
           )}
         </div>
@@ -441,7 +441,7 @@ export default function CompliancePage() {
                     <span className="text-[10px] font-mono uppercase tracking-[0.16em] px-2 py-0.5 rounded-full border border-emerald-400/30 text-emerald-300 bg-emerald-400/5">Recommended</span>
                   </div>
                   <p className="mt-1.5 text-[13px] text-white/60 leading-relaxed max-w-[440px]">
-                    Single signed document with executive summary, full ledger, on-chain proofs, and tax estimate. Compliant with IRS Form 8949 and EU DAC8 disclosure requirements.
+                    Single signed document with executive summary, full ledger, on-chain proofs, and tax estimate. IRS Form 8949 and EU DAC8 formatting planned for future release.
                   </p>
                   <div className="mt-4 flex items-center gap-3 text-[11px] font-mono text-white/45 flex-wrap">
                     <span className="flex items-center gap-1"><Icon name="file" size={11} /> {csvRowCount} rows · ~{Math.ceil(csvRowCount / 22) + 2} pages</span>
@@ -468,7 +468,7 @@ export default function CompliancePage() {
             </div>
             <h3 className="mt-4 text-[16px] tracking-tight text-white">Export CSV</h3>
             <p className="mt-1.5 text-[12.5px] text-white/55 leading-relaxed">
-              Compatible with <span className="text-white">Xero</span>, <span className="text-white">QuickBooks</span>, and <span className="text-white">Wave</span>. Maps directly to standard chart-of-accounts.
+              Format targets <span className="text-white">Xero</span>, <span className="text-white">QuickBooks</span>, and <span className="text-white">Wave</span> chart-of-accounts. Direct sync integrations are planned.
             </p>
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               {COMPLIANCE_EXPORT.integrations.map((s: string) => (
@@ -551,7 +551,7 @@ export default function CompliancePage() {
                 <div className="col-span-3">Counterparty · address</div>
                 <div className="col-span-2">Category</div>
                 <div className="col-span-1 text-right">Duration</div>
-                <div className="col-span-2 text-right">Amount (USDC)</div>
+                <div className="col-span-2 text-right">Amount (SOL)</div>
                 <div className="col-span-2 text-right">Tx hash</div>
               </div>
 
@@ -683,7 +683,7 @@ function LedgerRow({ row }: any) {
             <span className="text-[12.5px] text-white truncate">{row.counterparty}</span>
           </div>
           <span className={`font-num text-[13px] shrink-0 ${isIn ? "text-emerald-300" : "text-white"}`}>
-            {isIn ? "+" : "−"}${fmtUSD2(row.amount)}
+            {isIn ? "+" : "−"}◎{fmtSol4(row.amount)}
           </span>
         </div>
         <div className="flex items-center justify-between text-[11px] font-mono text-white/45">
@@ -718,7 +718,7 @@ function LedgerRow({ row }: any) {
         </div>
         <div className="col-span-1 text-right font-mono text-white/65">{fmtDur(row.duration)}</div>
         <div className="col-span-2 text-right">
-          <span className={`font-num text-[14px] ${isIn ? "text-emerald-300" : "text-white"}`}>{isIn ? "+" : "-"}${fmtUSD2(row.amount)}</span>
+          <span className={`font-num text-[14px] ${isIn ? "text-emerald-300" : "text-white"}`}>{isIn ? "+" : "-"}◎{fmtSol4(row.amount)}</span>
         </div>
         <div className="col-span-2 text-right">
           <a href="#" className="inline-flex items-center gap-1 font-mono text-[11px] text-violet-300/80 hover:text-white">

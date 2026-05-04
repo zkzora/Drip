@@ -1,3 +1,5 @@
+![Drip](public/banner.png)
+
 # Drip
 
 **Programmable cashflow for AI agents and modern workforces.**

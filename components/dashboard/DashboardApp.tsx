@@ -141,22 +141,7 @@ function Backdrop() {
 }
 
 function DripMark({ size = 26 }: any) {
-  return (
-    <span className="relative inline-block" style={{ width: size, height: size }}>
-      <span className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(167,139,250,0.7), transparent 70%)", filter: "blur(6px)" }} />
-      <svg viewBox="0 0 32 32" width={size} height={size} className="relative">
-        <defs>
-          <linearGradient id="dmg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#f0abfc" />
-            <stop offset="50%" stopColor="#a78bfa" />
-            <stop offset="100%" stopColor="#67e8f9" />
-          </linearGradient>
-        </defs>
-        <path d="M16 3 C 22 12, 26 17, 26 22 a 10 10 0 1 1 -20 0 C 6 17, 10 12, 16 3 Z" fill="url(#dmg)" />
-        <path d="M13 18 C 13 22, 19 22, 19 18" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-      </svg>
-    </span>
-  );
+  return <img src="/logo.png" width={size} height={size} alt="Drip" style={{ display: "inline-block" }} />;
 }
 
 function Sidebar({ active, onChange, streams }: any) {
@@ -378,9 +363,9 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
 
           <div className="mt-8 grid lg:grid-cols-12 gap-8 items-end">
             <div className="lg:col-span-7">
-              <div className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Streaming balance · USDC</div>
+              <div className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Streaming balance · SOL <span className="text-white/25 normal-case tracking-normal text-[9px]">(devnet demo)</span></div>
               <div className="mt-3 flex items-baseline gap-1 num-stable">
-                <span className="text-white/40 text-[22px] sm:text-[30px] lg:text-[36px] font-num">$</span>
+                <span className="text-white/40 text-[22px] sm:text-[30px] lg:text-[36px] font-num">◎</span>
                 <span className="text-iri text-[44px] sm:text-[58px] lg:text-[72px] font-num leading-[0.95] tracking-[-0.025em]">{whole}</span>
                 <span className="text-iri text-[44px] sm:text-[58px] lg:text-[72px] font-num leading-[0.95] tracking-[-0.025em]">.</span>
                 <span className="text-iri text-[44px] sm:text-[58px] lg:text-[72px] font-num leading-[0.95] tracking-[-0.025em]">{stableDec}</span>
@@ -391,14 +376,14 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
               <div className="mt-5 flex items-center flex-wrap gap-2">
                 <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-400/10 text-emerald-300 text-[12.5px] font-mono">
                   <Icon name="arrow-down-left" size={12} />
-                  + ${(inSum).toFixed(6)} / sec <span className="text-emerald-300/60 ml-1">incoming</span>
+                  + ◎{(inSum).toFixed(6)} / sec <span className="text-emerald-300/60 ml-1">incoming</span>
                 </span>
                 <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-400/10 text-rose-300 text-[12.5px] font-mono">
                   <Icon name="arrow-up-right" size={12} />
-                  - ${(outSum).toFixed(6)} / sec <span className="text-rose-300/60 ml-1">outgoing</span>
+                  - ◎{(outSum).toFixed(6)} / sec <span className="text-rose-300/60 ml-1">outgoing</span>
                 </span>
                 <span className={`px-3 py-1.5 rounded-full text-[12.5px] font-mono border ${positive ? "border-emerald-400/30 text-emerald-300" : "border-rose-400/30 text-rose-300"}`}>
-                  Net: {positive ? "+" : ""}{net.toFixed(6)} USDC/sec ~{positive ? "+" : ""}${(net * 86400).toFixed(2)}/day
+                  Net: {positive ? "+" : ""}{net.toFixed(6)} SOL/sec ~{positive ? "+" : ""}◎{(net * 86400).toFixed(4)}/day
                 </span>
               </div>
             </div>
@@ -415,8 +400,8 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
         <SummaryTile
           icon="layers"
           label="Total value streamed"
-          value={`$${fmtUSD(totalStreamed, 6)}`}
-          sub="lifetime · all directions"
+          value={`◎${fmtUSD(totalStreamed, 4)}`}
+          sub="lifetime · devnet demo data"
           accent
         />
         <SummaryTile
@@ -429,8 +414,8 @@ function DashboardPage({ streams, onNewStream, onGoTo, walletConnected, walletEr
         <SummaryTile
           icon="sprout"
           label="Yield generated"
-          value={`$${fmtUSD(yieldEarned, 6)}`}
-          sub={`lifetime · Raydium ${PROTOCOL_STATS.yieldApy.toFixed(2)}% APY`}
+          value={`◎${fmtUSD(yieldEarned, 4)}`}
+          sub="lifetime · yield routing roadmap"
           onClick={() => onGoTo("yield")}
         />
       </section>
@@ -1022,15 +1007,15 @@ function YieldPage({ streams, walletConnected, onRequireWallet }: any) {
       </section>
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <YieldStat icon="lock" label="Total deposits in yield" value={`$${ESCROW.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub={`across ${streams.filter(s => s.status === "streaming").length} active escrow contracts`} />
-        <YieldStat icon="trending-up" label="Current APY (avg)" value={`${APY.toFixed(2)}%`} sub="weighted across 3 pools" tone="up" />
-        <YieldStat icon="repeat" label="Compounding cadence" value="Every epoch" sub="~2.5 days · zero downtime" />
+        <YieldStat icon="lock" label="Total deposits in yield" value={`◎${ESCROW.toLocaleString(undefined, { minimumFractionDigits: 4 })}`} sub={`across ${streams.filter(s => s.status === "streaming").length} active escrow contracts`} />
+        <YieldStat icon="trending-up" label="Est. APY (roadmap)" value={`${APY.toFixed(2)}%`} sub="yield routing not yet live" tone="neutral" />
+        <YieldStat icon="repeat" label="Compounding cadence" value="Every epoch" sub="~2.5 days · when live" />
       </section>
 
       <section className="grid lg:grid-cols-2 gap-4">
         <div className="rounded-2xl glass p-6">
           <div className="text-[11px] uppercase tracking-[0.2em] text-violet-300/70 font-mono">Pool allocation</div>
-          <h3 className="mt-2 text-[18px] tracking-tight">Where your idle USDC lives.</h3>
+          <h3 className="mt-2 text-[18px] tracking-tight">Yield routing <span className="text-white/40 text-[14px] font-normal">(roadmap)</span></h3>
           <div className="mt-5 space-y-4">
             {YIELD_DEMO.pools.map((pool) => (
               <PoolRow key={pool.name} {...pool} />
