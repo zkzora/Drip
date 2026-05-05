@@ -2,6 +2,11 @@
 
 # Drip
 
+![Anchor Tests](https://img.shields.io/badge/anchor%20tests-19%2F19%20passing-brightgreen?style=flat-square)
+![Network](https://img.shields.io/badge/solana-devnet%20live-9945FF?style=flat-square&logo=solana&logoColor=white)
+![Token](https://img.shields.io/badge/token-native%20SOL%20MVP-blue?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
+
 **Programmable cashflow for AI agents and modern workforces.**
 
 > Give AI agents a budget that streams, stops, and audits itself.
@@ -95,6 +100,28 @@ See [DEVNET_DEPLOYMENT.md](DEVNET_DEPLOYMENT.md) for full deployment and wallet 
 | PDF export | Stub - shows "coming next" toast |
 | Agent terminal activity | Demo simulation - not real on-chain execution |
 | Deployment | **Devnet only** - mainnet not deployed |
+
+---
+
+## Agent terminal
+
+The **Agents** page in the dashboard shows a live inference log and a real-time spend counter. The terminal activity is a **demo simulation** — it is not executing real on-chain transactions. The budget panel at the top is wired to real on-chain Drip stream state when a wallet is connected. The log illustrates what autonomous agent-to-agent payments will look like when agent autopilot is implemented.
+
+---
+
+## Roadmap
+
+These features are **not live** in the current MVP. They are planned for post-hackathon development.
+
+| Feature | Status |
+|---------|--------|
+| Agent autopilot withdrawals | Planned — automated pull from on-chain stream balance |
+| USDC / SPL token support | Planned — program already parameterised, needs UI wiring |
+| Helius indexing & webhooks | Planned — real-time stream events via Helius enhanced WS |
+| PDF audit export | Planned — PDF generation for the compliance page |
+| Mainnet deployment | Planned — after security review and audit |
+| drip-sol SDK package | Planned — lightweight TypeScript client (npm package) |
+| Raydium yield routing | Planned — idle escrow routed to liquidity pools |
 
 ---
 
