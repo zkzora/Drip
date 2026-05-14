@@ -76,7 +76,7 @@ Workflow path:
 Triggers:
 
 - Pull requests
-- Pushes to `main`
+- Pushes to any branch
 - Manual `workflow_dispatch`
 
 Pinned CI toolchain:
