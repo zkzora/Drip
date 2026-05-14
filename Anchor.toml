@@ -4,8 +4,16 @@
 resolution = true
 skip-lint = false
 
+[test]
+startup_wait = 10000
+
 [programs.devnet]
 drip = "D5u3CiH3drPiQfiXctrFe6yDCsFsqHcWQ5aAnC9pkKM6"
+
+# Add this only after a reviewed mainnet program keypair and upgrade-authority
+# plan exist. Do not reuse the devnet deploy key material by default.
+# [programs.mainnet]
+# drip = "REPLACE_WITH_MAINNET_PROGRAM_ID"
 
 [programs.localnet]
 drip = "D5u3CiH3drPiQfiXctrFe6yDCsFsqHcWQ5aAnC9pkKM6"

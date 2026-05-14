@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
+    "preflight:solana": "node scripts/check-solana-toolchain.mjs",
     "anchor:test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts",
+    "test:anchor:full": "npm run preflight:solana && anchor test",
+    "validate:local": "npm run preflight:solana && npm run build && anchor test",
     "build": "next build",
     "start": "next start"
   },

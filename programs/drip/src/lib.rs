@@ -175,10 +175,19 @@ pub mod drip {
             DripError::UnauthorizedPayer
         );
 
-        let paused_duration = clock
-            .unix_timestamp
-            .checked_sub(stream.pause_started_at)
-            .ok_or(DripError::MathError)?;
+        let pause_end_time =
+            if stream.expiration_time > 0 && clock.unix_timestamp > stream.expiration_time {
+                stream.expiration_time
+            } else {
+                clock.unix_timestamp
+            };
+        let paused_duration = if pause_end_time > stream.pause_started_at {
+            pause_end_time
+                .checked_sub(stream.pause_started_at)
+                .ok_or(DripError::MathError)?
+        } else {
+            0
+        };
         stream.total_paused_seconds = stream
             .total_paused_seconds
             .checked_add(paused_duration)
@@ -409,16 +418,26 @@ pub fn calculate_unlocked_amount(stream: &StreamState, current_time: i64) -> Res
         return Ok(0);
     }
 
-    let unlocked = (effective_elapsed as u64)
-        .checked_mul(stream.flow_rate_per_second)
-        .ok_or(DripError::MathError)?;
-    let mut capped = unlocked.min(stream.deposited_amount);
-
-    if stream.max_budget > 0 {
-        capped = capped.min(stream.max_budget);
+    if stream.flow_rate_per_second == 0 {
+        return err!(DripError::InvalidFlowRate);
     }
 
-    Ok(capped)
+    let cap = if stream.max_budget > 0 {
+        stream.deposited_amount.min(stream.max_budget)
+    } else {
+        stream.deposited_amount
+    };
+    let effective_elapsed_seconds = effective_elapsed as u64;
+    let seconds_to_reach_cap = cap / stream.flow_rate_per_second;
+
+    if effective_elapsed_seconds > seconds_to_reach_cap {
+        return Ok(cap);
+    }
+
+    effective_elapsed_seconds
+        .checked_mul(stream.flow_rate_per_second)
+        .map(|unlocked| unlocked.min(cap))
+        .ok_or(error!(DripError::MathError))
 }
 
 fn transfer_from_escrow<'info>(

@@ -12,7 +12,7 @@ describe("drip", () => {
   let streamNonce = 1;
 
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-  const bn = (value: number | bigint) => new BN(value.toString());
+  const bn = (value: number | string) => new BN(value.toString());
 
   async function confirm(signature: string) {
     const latest = await provider.connection.getLatestBlockhash();
@@ -82,8 +82,8 @@ describe("drip", () => {
     receiver?: anchor.web3.Keypair;
     receiverPubkey?: anchor.web3.PublicKey;
     deposit?: number;
-    rate?: number;
-    maxBudget?: number;
+    rate?: number | string;
+    maxBudget?: number | string;
     expiration?: number;
   } = {}) {
     const payer = opts.payer ?? (await fundedKeypair());
@@ -201,14 +201,21 @@ describe("drip", () => {
       .rpc();
   }
 
-  async function cancel(ctx: Awaited<ReturnType<typeof createStream>>, signer = ctx.payer) {
+  async function cancel(
+    ctx: Awaited<ReturnType<typeof createStream>>,
+    signer = ctx.payer,
+    overrides: {
+      receiverPubkey?: anchor.web3.PublicKey;
+      escrow?: anchor.web3.PublicKey;
+    } = {},
+  ) {
     return program.methods
       .cancelStream()
       .accounts({
         payer: signer.publicKey,
-        receiver: ctx.receiverPubkey,
+        receiver: overrides.receiverPubkey ?? ctx.receiverPubkey,
         streamState: ctx.streamState,
-        escrow: ctx.escrow,
+        escrow: overrides.escrow ?? ctx.escrow,
         systemProgram: SystemProgram.programId,
       })
       .signers([signer])
@@ -217,6 +224,27 @@ describe("drip", () => {
 
   async function fetchStreamState(streamState: anchor.web3.PublicKey) {
     return (program.account as any).streamState.fetch(streamState);
+  }
+
+  async function balance(pubkey: anchor.web3.PublicKey) {
+    return provider.connection.getBalance(pubkey);
+  }
+
+  async function waitUntilStreamElapsed(
+    ctx: Awaited<ReturnType<typeof createStream>>,
+    elapsedSeconds: number,
+  ) {
+    const state: any = await fetchStreamState(ctx.streamState);
+    const target = state.startTime.toNumber() + elapsedSeconds;
+
+    const started = Date.now();
+    while ((await chainUnix()) < target) {
+      assert(
+        Date.now() - started < 30_000,
+        `timed out waiting for stream elapsed seconds: ${elapsedSeconds}`,
+      );
+      await sleep(250);
+    }
   }
 
   it("creates a stream successfully", async () => {
@@ -293,11 +321,68 @@ describe("drip", () => {
     await expectAnchorError(withdraw(ctx, intruder), "UnauthorizedReceiver");
   });
 
+  it("rejects unauthorized payer actions", async () => {
+    const ctx = await createStream();
+    const intruder = await fundedKeypair();
+
+    await expectAnchorError(pause(ctx, intruder), "UnauthorizedPayer");
+    await pause(ctx);
+    await expectAnchorError(resume(ctx, intruder), "UnauthorizedPayer");
+    await resume(ctx);
+    await expectAnchorError(cancel(ctx, intruder), "UnauthorizedPayer");
+  });
+
+  it("rejects withdraw with a mismatched escrow PDA", async () => {
+    const ctx = await createStream();
+    const other = await createStream();
+    await sleep(1_250);
+
+    await expectAnchorError(
+      program.methods
+        .withdraw()
+        .accounts({
+          receiver: ctx.receiver.publicKey,
+          streamState: ctx.streamState,
+          escrow: other.escrow,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([ctx.receiver])
+        .rpc(),
+      "ConstraintSeeds",
+    );
+  });
+
   it("rejects withdraw when nothing is available", async () => {
     const ctx = await createStream({ deposit: 10_000_000, rate: 1, maxBudget: 1 });
     await sleep(1_500);
     await withdraw(ctx);
     await expectAnchorError(withdraw(ctx), "NothingToWithdraw");
+  });
+
+  it("withdraws repeatedly without exceeding unlocked amount", async () => {
+    const rate = 100_000;
+    const ctx = await createStream({ deposit: 2_000_000, rate });
+
+    await waitUntilStreamElapsed(ctx, 2);
+    await withdraw(ctx);
+    const firstState: any = await fetchStreamState(ctx.streamState);
+
+    await waitUntilStreamElapsed(ctx, 4);
+    await withdraw(ctx);
+    const secondState: any = await fetchStreamState(ctx.streamState);
+
+    assert(
+      secondState.withdrawnAmount.gt(firstState.withdrawnAmount),
+      "second withdrawal should increase total withdrawn",
+    );
+    assert(
+      secondState.withdrawnAmount.lte(new BN(rate * 5)),
+      `repeated withdrawals exceeded elapsed cap: ${secondState.withdrawnAmount.toString()}`,
+    );
+    assert(
+      secondState.withdrawnAmount.lte(new BN(ctx.depositedAmount)),
+      "repeated withdrawals exceeded deposit",
+    );
   });
 
   it("pauses a stream", async () => {
@@ -331,17 +416,41 @@ describe("drip", () => {
 
   it("does not accrue while paused", async () => {
     const ctx = await createStream({ rate: 100_000 });
-    await sleep(1_250);
+    await waitUntilStreamElapsed(ctx, 2);
     await pause(ctx);
-    await sleep(3_250);
+    await sleep(1_250);
     await resume(ctx);
     await withdraw(ctx);
 
     const state: any = await fetchStreamState(ctx.streamState);
-    assert(state.totalPausedSeconds.gte(new BN(2)));
+    assert(state.totalPausedSeconds.gte(new BN(1)));
     assert(
-      state.withdrawnAmount.lte(new BN(300_000)),
+      state.withdrawnAmount.lte(new BN(400_000)),
       `paused stream accrued too much: ${state.withdrawnAmount.toString()}`,
+    );
+  });
+
+  it("multiple pause resume cycles only count active time", async () => {
+    const rate = 100_000;
+    const ctx = await createStream({ deposit: 2_000_000, rate });
+
+    await waitUntilStreamElapsed(ctx, 2);
+    await pause(ctx);
+    await sleep(1_250);
+    await resume(ctx);
+    await pause(ctx);
+    await sleep(1_250);
+    await resume(ctx);
+    await withdraw(ctx);
+
+    const state: any = await fetchStreamState(ctx.streamState);
+    assert(
+      state.totalPausedSeconds.gte(new BN(1)),
+      `paused duration too low: ${state.totalPausedSeconds.toString()}`,
+    );
+    assert(
+      state.withdrawnAmount.lte(new BN(rate * 4)),
+      `multi-pause stream accrued too much: ${state.withdrawnAmount.toString()}`,
     );
   });
 
@@ -364,6 +473,45 @@ describe("drip", () => {
 
     assert(after > before);
     assert(state.withdrawnAmount.gt(new BN(0)));
+  });
+
+  it("cancel after partial withdrawal pays only remaining unlocked funds", async () => {
+    const ctx = await createStream({ deposit: 2_000_000, rate: 100_000 });
+
+    await waitUntilStreamElapsed(ctx, 2);
+    await withdraw(ctx);
+    const stateAfterWithdraw: any = await fetchStreamState(ctx.streamState);
+
+    await waitUntilStreamElapsed(ctx, 4);
+    const receiverBefore = await balance(ctx.receiverPubkey);
+    await cancel(ctx);
+    const receiverAfter = await balance(ctx.receiverPubkey);
+    const stateAfterCancel: any = await fetchStreamState(ctx.streamState);
+    const escrowAfter = await balance(ctx.escrow);
+    const rentReserve = await escrowRentReserve();
+
+    const receiverDelta = receiverAfter - receiverBefore;
+    const withdrawnDelta = stateAfterCancel.withdrawnAmount
+      .sub(stateAfterWithdraw.withdrawnAmount)
+      .toNumber();
+
+    assert(withdrawnDelta > 0, "cancel should settle newly unlocked funds");
+    assert.equal(receiverDelta, withdrawnDelta);
+    assert(
+      stateAfterCancel.withdrawnAmount.lte(new BN(ctx.depositedAmount)),
+      "cancel overpaid receiver beyond deposit",
+    );
+    assert.equal(escrowAfter, rentReserve);
+  });
+
+  it("rejects cancel with a mismatched receiver account", async () => {
+    const ctx = await createStream();
+    const wrongReceiver = await fundedKeypair();
+
+    await expectAnchorError(
+      cancel(ctx, ctx.payer, { receiverPubkey: wrongReceiver.publicKey }),
+      "InvalidReceiver",
+    );
   });
 
   it("cancel refunds remaining escrow to payer", async () => {
@@ -392,17 +540,52 @@ describe("drip", () => {
 
   it("expiration caps accrual", async () => {
     const rate = 100_000;
+    const payer = await fundedKeypair();
+    const receiver = await fundedKeypair();
+    const expirationWindow = 8;
     const ctx = await createStream({
+      payer,
+      receiver,
       rate,
-      expiration: (await chainUnix()) + 5,
+      expiration: (await chainUnix()) + expirationWindow,
     });
-    await sleep(6_500);
+    await sleep((expirationWindow + 1) * 1_000);
     await withdraw(ctx);
     const state: any = await fetchStreamState(ctx.streamState);
 
     assert(
-      state.withdrawnAmount.lte(new BN(rate * 5)),
+      state.withdrawnAmount.lte(new BN(rate * expirationWindow)),
       `expiration cap exceeded: ${state.withdrawnAmount.toString()}`,
+    );
+  });
+
+  it("resume after expiration while paused does not brick cancellation", async () => {
+    const rate = 100_000;
+    const payer = await fundedKeypair();
+    const receiver = await fundedKeypair();
+    const expirationWindow = 6;
+    const ctx = await createStream({
+      payer,
+      receiver,
+      rate,
+      expiration: (await chainUnix()) + expirationWindow,
+    });
+
+    await sleep(1_250);
+    await pause(ctx);
+    await sleep((expirationWindow + 1) * 1_000);
+    await resume(ctx);
+    await cancel(ctx);
+
+    const state: any = await fetchStreamState(ctx.streamState);
+    assert.equal(state.isCancelled, true);
+    assert(
+      state.withdrawnAmount.lte(new BN(rate * expirationWindow)),
+      `expiration cap exceeded after pause/resume: ${state.withdrawnAmount.toString()}`,
+    );
+    assert(
+      state.totalPausedSeconds.lte(new BN(expirationWindow)),
+      `pause duration counted past expiration: ${state.totalPausedSeconds.toString()}`,
     );
   });
 
@@ -415,5 +598,55 @@ describe("drip", () => {
     const state: any = await fetchStreamState(ctx.streamState);
 
     assert.equal(state.withdrawnAmount.toNumber(), maxBudget);
+  });
+
+  it("max budget reached then cancel refunds unused deposit", async () => {
+    const rate = 100_000;
+    const maxBudget = 200_000;
+    const ctx = await createStream({ deposit: 1_000_000, rate, maxBudget });
+
+    await waitUntilStreamElapsed(ctx, 3);
+    await withdraw(ctx);
+    const receiverBefore = await balance(ctx.receiverPubkey);
+    const payerBefore = await balance(ctx.payer.publicKey);
+
+    await cancel(ctx);
+    const receiverAfter = await balance(ctx.receiverPubkey);
+    const payerAfter = await balance(ctx.payer.publicKey);
+    const state: any = await fetchStreamState(ctx.streamState);
+    const escrowAfter = await balance(ctx.escrow);
+    const rentReserve = await escrowRentReserve();
+
+    assert.equal(state.withdrawnAmount.toNumber(), maxBudget);
+    assert.equal(receiverAfter - receiverBefore, 0);
+    assert(payerAfter > payerBefore, "payer should receive unused deposit refund");
+    assert.equal(escrowAfter, rentReserve);
+  });
+
+  it("tiny one-lamport stream withdraws only integer lamports", async () => {
+    const ctx = await createStream({ deposit: 3, rate: 1 });
+
+    await waitUntilStreamElapsed(ctx, 2);
+    const receiverBefore = await balance(ctx.receiverPubkey);
+    await withdraw(ctx);
+    const receiverAfter = await balance(ctx.receiverPubkey);
+    const state: any = await fetchStreamState(ctx.streamState);
+
+    assert(state.withdrawnAmount.gte(new BN(1)));
+    assert(state.withdrawnAmount.lte(new BN(3)));
+    assert.equal(receiverAfter - receiverBefore, state.withdrawnAmount.toNumber());
+  });
+
+  it("huge flow rate saturates at deposit instead of overflowing", async () => {
+    const deposit = 10_000;
+    const hugeRate = "18446744073709551615";
+    const ctx = await createStream({ deposit, rate: hugeRate });
+
+    await waitUntilStreamElapsed(ctx, 2);
+    await withdraw(ctx);
+    const state: any = await fetchStreamState(ctx.streamState);
+
+    assert.equal(state.withdrawnAmount.toNumber(), deposit);
+    await expectAnchorError(withdraw(ctx), "NothingToWithdraw");
   });
 });

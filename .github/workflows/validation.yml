@@ -1,0 +1,124 @@
+name: Validation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20.20.2"
+  RUST_VERSION: "1.75.0"
+  SOLANA_VERSION: "1.18.26"
+  ANCHOR_VERSION: "0.30.1"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validation:
+    name: Full Validation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev libudev-dev protobuf-compiler
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Rust
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt,clippy
+          rustup default "$RUST_VERSION"
+          rustc --version
+          cargo --version
+
+      - name: Install Solana CLI
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://release.anza.xyz/v${SOLANA_VERSION}/install" -o /tmp/solana-install.sh
+          sh /tmp/solana-install.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
+          cargo build-sbf --version
+
+      - name: Install Anchor CLI
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor --tag "v${ANCHOR_VERSION}" anchor-cli --locked --force
+          anchor --version
+
+      - name: Create local validator wallet
+        run: |
+          mkdir -p "$HOME/.config/solana"
+          solana-keygen new --no-bip39-passphrase --silent --force -o "$HOME/.config/solana/id.json"
+          solana config set --url localhost
+
+      - name: Verify pinned toolchain
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = "v${NODE_VERSION}"
+          rustc --version | grep "rustc ${RUST_VERSION}"
+          cargo --version | grep "cargo ${RUST_VERSION}"
+          solana --version | grep "solana-cli ${SOLANA_VERSION}"
+          cargo build-sbf --version | grep "solana-cargo-build-sbf ${SOLANA_VERSION}"
+          anchor --version | grep "anchor-cli ${ANCHOR_VERSION}"
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Preflight Solana toolchain
+        run: npm run preflight:solana
+
+      - name: Verify vendor Anchor patch is active
+        run: |
+          set -euo pipefail
+          cargo metadata --format-version 1 > /tmp/drip-cargo-metadata.json
+          node <<'NODE'
+          const metadata = require("/tmp/drip-cargo-metadata.json");
+          const patched = metadata.packages.find(
+            (pkg) =>
+              pkg.name === "anchor-syn" &&
+              pkg.version === "0.30.1" &&
+              pkg.manifest_path.includes("/vendor/anchor-syn-0.30.1/"),
+          );
+          if (!patched) {
+            throw new Error("Expected anchor-syn 0.30.1 to resolve from vendor/anchor-syn-0.30.1");
+          }
+          console.log(`anchor-syn patch active: ${patched.manifest_path}`);
+          NODE
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run full Anchor validation
+        run: npm run test:anchor:full
+
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-artifacts
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            .anchor/program-logs/**
+            .anchor/test-ledger/test-ledger-log.txt
+            target/idl/**
+            target/deploy/*.so
