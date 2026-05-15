@@ -5,6 +5,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Drip",
   description: "Programmable cashflow for AI agents.",
+  icons: {
+    icon: "/icons.png",
+    apple: "/icons.png",
+  },
 };
 
 export default function RootLayout({

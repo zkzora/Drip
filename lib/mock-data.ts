@@ -241,13 +241,11 @@ export const ECOSYSTEM_PARTNERS = [
 
 export const FINAL_CTA_STATS = ["devnet · live", "native SOL · MVP", "Anchor · open source"];
 
-export const FOOTER_SOCIALS = ["github", "twitter", "send", "youtube"];
-
-export const FOOTER_LINK_GROUPS = [
-  { title: "Protocol", links: ["Whitepaper", "Architecture", "Security", "Status"] },
-  { title: "Builders", links: ["Quickstart", "SDK reference (planned)", "Examples", "Anchor program", "Grants"] },
-  { title: "Company", links: ["Manifesto", "Team", "Press", "Brand kit", "Contact"] },
+export const FOOTER_SOCIALS = [
+  { icon: "twitter", href: "https://x.com/Drip_agents" },
 ];
+
+export const FOOTER_LINK_GROUPS: { title: string; links: string[] }[] = [];
 
 export function createSeedStreams(): MockStream[] {
   const acc = (b: number, rate: number, elapsedSec: number) => b + rate * elapsedSec;

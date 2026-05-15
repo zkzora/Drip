@@ -279,14 +279,6 @@ function Nav() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href="https://github.com/zkzora/drip"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden md:flex items-center gap-2 text-[13px] text-white/60 hover:text-white px-3 py-2 transition"
-          >
-            <Icon name="github" size={15} /> GitHub
-          </a>
           <a href="/dashboard" className="hidden md:flex btn-ghost rounded-full px-4 py-2 text-[13px] text-white/85 hover:text-white items-center">
             Sign in
           </a>
@@ -314,14 +306,6 @@ function Nav() {
               {link.label}
             </a>
           ))}
-          <a
-            href="https://github.com/zkzora/drip"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-[14px] text-white/70 hover:text-white py-2.5 mt-1"
-          >
-            <Icon name="github" size={15} /> GitHub
-          </a>
           <a href="/dashboard" className="flex items-center gap-2 text-[14px] text-white/70 hover:text-white py-2.5">
             <Icon name="arrow-up-right" size={15} /> Sign in to app
           </a>
@@ -1201,8 +1185,8 @@ function Footer() {
           </p>
           <div className="mt-6 flex items-center gap-2">
             {FOOTER_SOCIALS.map((i) => (
-              <a key={i} href="#" className="w-9 h-9 rounded-full border border-white/10 hover:border-white/30 flex items-center justify-center text-white/55 hover:text-white">
-                <Icon name={i} size={14} />
+              <a key={i.icon} href={i.href} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-white/10 hover:border-white/30 flex items-center justify-center text-white/55 hover:text-white">
+                <Icon name={i.icon} size={14} />
               </a>
             ))}
           </div>
