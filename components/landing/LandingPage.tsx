@@ -35,6 +35,8 @@ const fmtUSD = (n, frac = 6) => {
 const truncAddr = (a) => `${a.slice(0, 4)}...${a.slice(-4)}`;
 
 // --- Live counter hook -----------------------------------------------------
+// Throttled to 150ms intervals (not rAF) to avoid overheating mobile CPUs.
+// Also pauses when the page is hidden (visibilitychange).
 function useStreamingValue(initial, ratePerSec, running = true) {
   const [v, setV] = useState(initial);
   const startRef = useRef({ t: performance.now(), base: initial });
@@ -43,16 +45,15 @@ function useStreamingValue(initial, ratePerSec, running = true) {
     // eslint-disable-next-line
   }, [ratePerSec, running]);
   useEffect(() => {
-    let id;
+    if (!running) return;
+    let id: ReturnType<typeof setInterval>;
     const tick = () => {
-      if (running) {
-        const elapsed = (performance.now() - startRef.current.t) / 1000;
-        setV(startRef.current.base + elapsed * ratePerSec);
-      }
-      id = requestAnimationFrame(tick);
+      if (document.visibilityState === "hidden") return;
+      const elapsed = (performance.now() - startRef.current.t) / 1000;
+      setV(startRef.current.base + elapsed * ratePerSec);
     };
-    id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
+    id = setInterval(tick, 150);
+    return () => clearInterval(id);
   }, [ratePerSec, running]);
   return v;
 }
@@ -858,7 +859,9 @@ function DemoSubs() {
 function DemoAgents() {
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1400);
+    const id = setInterval(() => {
+      if (document.visibilityState !== "hidden") setTick((t) => t + 1);
+    }, 1400);
     return () => clearInterval(id);
   }, []);
   const events = LANDING_AGENT_DEMO.events;
@@ -1008,14 +1011,15 @@ function Calculator() {
   const perHour = perSec * 3600;
   const perDay = perSec * 86400;
 
-  // ticking demo
+  // ticking demo — only runs when section is visible
+  const { ref: calcRef, visible: calcVisible } = useInView(0.1);
   const [running, setRunning] = useState(true);
   const [base, setBase] = useState(0);
   useEffect(() => { setBase(0); }, [monthly]);
-  const earned = useStreamingValue(0, perSec, running);
+  const earned = useStreamingValue(0, perSec, running && calcVisible);
 
   return (
-    <div className="rounded-3xl glass-strong p-5 sm:p-7 h-full relative overflow-hidden">
+    <div ref={calcRef} className="rounded-3xl glass-strong p-5 sm:p-7 h-full relative overflow-hidden">
       <div className="absolute -top-20 -right-20 w-52 h-52 iri-orb rounded-full opacity-40" />
       <div className="flex items-center justify-between relative">
         <div>
