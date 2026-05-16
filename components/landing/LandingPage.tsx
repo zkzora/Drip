@@ -680,26 +680,25 @@ function UseCases() {
         </div>
 
         {/* Detail panel */}
-        <div ref={detail.ref} className={`mt-6 grid lg:grid-cols-12 gap-4 reveal ${detail.visible ? "in-view" : ""}`}>
+        <div ref={detail.ref} className={`mt-4 grid lg:grid-cols-12 gap-4 reveal ${detail.visible ? "in-view" : ""}`}>
+          {/* Description — always visible */}
           <div className="lg:col-span-5 rounded-2xl glass p-4 sm:p-8">
-            <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.2em] text-violet-300/70">{c.tag}</div>
-            <h3 className="mt-2 sm:mt-3 text-[24px] sm:text-[34px] leading-[1.1] font-medium tracking-[-0.02em] text-iri">{c.title}</h3>
-            <p className="mt-3 sm:mt-5 text-[13.5px] sm:text-[15.5px] text-white/65 leading-[1.55]">{c.lede}</p>
-            <ul className="mt-4 sm:mt-7 space-y-2.5 sm:space-y-4">
+            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-violet-300/70">{c.tag}</div>
+            <h3 className="mt-2 text-[22px] sm:text-[34px] leading-[1.1] font-medium tracking-[-0.02em] text-iri">{c.title}</h3>
+            <p className="mt-2 sm:mt-4 text-[13px] sm:text-[15.5px] text-white/65 leading-[1.55]">{c.lede}</p>
+            <ul className="mt-3 sm:mt-6 space-y-2 sm:space-y-4">
               {c.bullets.map((b, i) => (
-                <li key={i} className="flex gap-2.5 text-[13px] sm:text-[14px] text-white/75 leading-[1.5]">
-                  <span className="mt-0.5 w-4 h-4 shrink-0 rounded-full grad-border bg-white/[0.03] flex items-center justify-center text-[10px] text-violet-200 font-mono">{"→"}</span>
+                <li key={i} className="flex gap-2.5 text-[12.5px] sm:text-[14px] text-white/75 leading-[1.5]">
+                  <span className="mt-0.5 w-4 h-4 shrink-0 rounded-full grad-border bg-white/[0.03] flex items-center justify-center text-[9px] text-violet-200 font-mono">→</span>
                   <span>{b}</span>
                 </li>
               ))}
             </ul>
-            <button className="mt-5 sm:mt-9 btn-ghost rounded-full px-4 py-2 text-[12.5px] sm:text-[13px] text-white/85 flex items-center gap-2">
-              See architecture <Icon name="arrow-right" size={13} />
-            </button>
           </div>
 
-          <div className="lg:col-span-7 rounded-2xl grad-border glass-strong p-1.5">
-            <div className="rounded-[14px] bg-gradient-to-b from-[#100e26]/95 to-[#07060f] p-4 sm:p-7 relative overflow-hidden">
+          {/* Demo panel — hidden on mobile, visible on lg+ */}
+          <div className="hidden lg:block lg:col-span-7 rounded-2xl grad-border glass-strong p-1.5">
+            <div className="rounded-[14px] bg-gradient-to-b from-[#100e26]/95 to-[#07060f] p-7 relative overflow-hidden">
               {c.demo === "workforce" && <DemoWorkforce />}
               {c.demo === "subs" && <DemoSubs />}
               {c.demo === "agents" && <DemoAgents />}
