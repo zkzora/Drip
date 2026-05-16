@@ -680,26 +680,26 @@ function UseCases() {
         </div>
 
         {/* Detail panel */}
-        <div ref={detail.ref} className={`mt-6 grid lg:grid-cols-12 gap-6 reveal ${detail.visible ? "in-view" : ""}`}>
-          <div className="lg:col-span-5 rounded-3xl glass p-6 sm:p-8">
-            <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-violet-300/70">{c.tag}</div>
-            <h3 className="mt-3 text-[34px] leading-[1.1] font-medium tracking-[-0.02em] text-iri">{c.title}</h3>
-            <p className="mt-5 text-[15.5px] text-white/65 leading-[1.6]">{c.lede}</p>
-            <ul className="mt-7 space-y-4">
+        <div ref={detail.ref} className={`mt-6 grid lg:grid-cols-12 gap-4 reveal ${detail.visible ? "in-view" : ""}`}>
+          <div className="lg:col-span-5 rounded-2xl glass p-4 sm:p-8">
+            <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.2em] text-violet-300/70">{c.tag}</div>
+            <h3 className="mt-2 sm:mt-3 text-[24px] sm:text-[34px] leading-[1.1] font-medium tracking-[-0.02em] text-iri">{c.title}</h3>
+            <p className="mt-3 sm:mt-5 text-[13.5px] sm:text-[15.5px] text-white/65 leading-[1.55]">{c.lede}</p>
+            <ul className="mt-4 sm:mt-7 space-y-2.5 sm:space-y-4">
               {c.bullets.map((b, i) => (
-                <li key={i} className="flex gap-3 text-[14px] text-white/75 leading-[1.55]">
-                  <span className="mt-1 w-4 h-4 rounded-full grad-border bg-white/[0.03] flex items-center justify-center text-[10px] text-violet-200 font-mono">{"→"}</span>
+                <li key={i} className="flex gap-2.5 text-[13px] sm:text-[14px] text-white/75 leading-[1.5]">
+                  <span className="mt-0.5 w-4 h-4 shrink-0 rounded-full grad-border bg-white/[0.03] flex items-center justify-center text-[10px] text-violet-200 font-mono">{"→"}</span>
                   <span>{b}</span>
                 </li>
               ))}
             </ul>
-            <button className="mt-9 btn-ghost rounded-full px-4 py-2.5 text-[13px] text-white/85 flex items-center gap-2">
+            <button className="mt-5 sm:mt-9 btn-ghost rounded-full px-4 py-2 text-[12.5px] sm:text-[13px] text-white/85 flex items-center gap-2">
               See architecture <Icon name="arrow-right" size={13} />
             </button>
           </div>
 
-          <div className="lg:col-span-7 rounded-3xl grad-border glass-strong p-1.5 sm:min-h-[420px]">
-            <div className="rounded-[20px] bg-gradient-to-b from-[#100e26]/95 to-[#07060f] p-4 sm:p-7 h-full relative overflow-hidden">
+          <div className="lg:col-span-7 rounded-2xl grad-border glass-strong p-1.5">
+            <div className="rounded-[14px] bg-gradient-to-b from-[#100e26]/95 to-[#07060f] p-4 sm:p-7 relative overflow-hidden">
               {c.demo === "workforce" && <DemoWorkforce />}
               {c.demo === "subs" && <DemoSubs />}
               {c.demo === "agents" && <DemoAgents />}
@@ -829,46 +829,46 @@ function DemoAgents() {
   }, []);
   const events = LANDING_AGENT_DEMO.events;
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[14px] text-white">{LANDING_AGENT_DEMO.sessionName}</div>
-          <div className="text-[11.5px] font-mono text-white/40">{LANDING_AGENT_DEMO.sessionMeta}</div>
+          <div className="text-[13px] sm:text-[14px] text-white">{LANDING_AGENT_DEMO.sessionName}</div>
+          <div className="text-[10px] sm:text-[11.5px] font-mono text-white/40 leading-tight">{LANDING_AGENT_DEMO.sessionMeta}</div>
         </div>
-        <div className="text-[11px] font-mono uppercase tracking-[0.18em] px-2.5 py-1 rounded-full border border-fuchsia-400/30 text-fuchsia-300 bg-fuchsia-400/5">
+        <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.14em] px-2 py-1 rounded-full border border-fuchsia-400/30 text-fuchsia-300 bg-fuchsia-400/5 shrink-0">
           Autonomous
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-white/5 bg-white/[0.02] p-3 flex-1 overflow-hidden scanlines">
-        <div className="flex items-center justify-between px-2 py-1.5">
-          <span className="text-[10.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Settlement log</span>
-          <span className="text-[9.5px] font-mono text-amber-300/60 uppercase tracking-[0.14em]">demo simulation</span>
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2.5 scanlines">
+        <div className="flex items-center justify-between px-1.5 pb-1.5">
+          <span className="text-[9.5px] uppercase tracking-[0.2em] text-white/40 font-mono">Settlement log</span>
+          <span className="text-[9px] font-mono text-amber-300/60 uppercase tracking-[0.12em]">demo</span>
         </div>
-        <div className="space-y-1.5 codeblock">
+        <div className="space-y-1 codeblock">
           {events.map((e, i) => {
             const active = i === tick % events.length;
             return (
-              <div key={i} className={`px-2 sm:px-3 py-2 rounded-lg border flex items-center gap-1.5 sm:gap-3 transition min-w-0 ${active ? "border-violet-400/30 bg-violet-400/5" : "border-transparent"}`}>
-                <span className="font-mono text-[10px] sm:text-[11px] text-white/40 shrink-0">t+{(i * 0.4).toFixed(1)}s</span>
-                <span className="font-mono text-[10px] sm:text-[12px] text-violet-200 truncate min-w-0">{e.from}</span>
-                <Icon name="arrow-right" size={10} className="text-white/30 shrink-0" />
-                <span className="font-mono text-[10px] sm:text-[12px] text-cyan-200 truncate min-w-0">{e.to}</span>
-                <span className="ml-auto font-mono text-[10px] sm:text-[12px] text-emerald-300 shrink-0 whitespace-nowrap">+{e.amt}</span>
+              <div key={i} className={`px-2 py-1.5 rounded-lg border flex items-center gap-1.5 min-w-0 transition ${active ? "border-violet-400/30 bg-violet-400/5" : "border-transparent"}`}>
+                <span className="font-mono text-[9.5px] text-white/40 shrink-0 w-10">t+{(i * 0.4).toFixed(1)}s</span>
+                <span className="font-mono text-[9.5px] sm:text-[11px] text-violet-200 truncate">{e.from}</span>
+                <Icon name="arrow-right" size={9} className="text-white/30 shrink-0" />
+                <span className="font-mono text-[9.5px] sm:text-[11px] text-cyan-200 truncate">{e.to}</span>
+                <span className="ml-auto font-mono text-[9.5px] sm:text-[11px] text-emerald-300 shrink-0 whitespace-nowrap">+{e.amt}</span>
               </div>
             );
           })}
         </div>
-        <div className="mt-2 px-2 text-[10px] sm:text-[11px] font-mono text-white/35 flex items-center gap-1 min-w-0">
+        <div className="mt-1.5 px-1.5 text-[9.5px] font-mono text-white/30 flex items-center gap-1 min-w-0">
           <span className="truncate">{LANDING_AGENT_DEMO.streamId} · {tick + 1} settlements</span>
           <span className="cursor-blink text-violet-400/70 ml-0.5 shrink-0">▮</span>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-3 text-[12px]">
-        <MiniStat label="Total settled" value={LANDING_AGENT_DEMO.totalSettled} />
-        <MiniStat label="Avg latency" value={LANDING_AGENT_DEMO.avgLatency} />
-        <MiniStat label="Settlements" value={`${tick * events.length + LANDING_AGENT_DEMO.baseSettlements}`} />
+      <div className="grid grid-cols-3 gap-2">
+        <MiniStat label="Settled" value={LANDING_AGENT_DEMO.totalSettled} />
+        <MiniStat label="Latency" value={LANDING_AGENT_DEMO.avgLatency} />
+        <MiniStat label="Count" value={`${tick * events.length + LANDING_AGENT_DEMO.baseSettlements}`} />
       </div>
     </div>
   );
@@ -876,9 +876,9 @@ function DemoAgents() {
 
 function MiniStat({ label, value }: any) {
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
-      <div className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-mono">{label}</div>
-      <div className="mt-1 text-[16px] font-num text-white num-stable">{value}</div>
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2.5 sm:p-3">
+      <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.14em] text-white/40 font-mono truncate">{label}</div>
+      <div className="mt-0.5 text-[13px] sm:text-[16px] font-num text-white num-stable">{value}</div>
     </div>
   );
 }
