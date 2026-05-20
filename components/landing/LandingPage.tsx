@@ -220,7 +220,7 @@ const NAV_LINKS = [
   { label: "Use cases", href: "#use-cases" },
   { label: "Developers", href: "#developers" },
   { label: "Ecosystem", href: "#ecosystem" },
-  { label: "Docs", href: "#developers" },
+  { label: "Docs", href: "/docs" },
 ];
 
 function Nav() {
@@ -1094,6 +1094,7 @@ function Ecosystem() {
   );
 }
 
+
 // =========================================================================
 // CTA + Footer
 // =========================================================================
@@ -1117,9 +1118,9 @@ function FinalCTA() {
                 <a href="/dashboard" className="btn-primary rounded-full px-5 py-3 text-[14px] font-medium text-white flex items-center gap-2">
                   <Icon name="zap" size={15} /> Open Drip App
                 </a>
-                <button className="btn-ghost rounded-full px-5 py-3 text-[14px] text-white/90 flex items-center gap-2">
+                <a href="/docs" className="btn-ghost rounded-full px-5 py-3 text-[14px] text-white/90 flex items-center gap-2">
                   <Icon name="book-open" size={15} /> Read the docs
-                </button>
+                </a>
               </div>
               <div className="mt-8 flex items-center justify-center gap-6 text-[11.5px] font-mono text-white/35">
                 {FINAL_CTA_STATS.map((stat, index) => (
@@ -1149,12 +1150,21 @@ function Footer() {
           <p className="mt-4 text-[13px] text-white/50 leading-[1.6] max-w-[320px]">
             The streaming payments layer for Solana. Built by an open collective of designers and Anchor devs in 2026.
           </p>
-          <div className="mt-6 flex items-center gap-2">
+          <div className="mt-6 flex items-center gap-2 flex-wrap">
             {FOOTER_SOCIALS.map((i) => (
               <a key={i.icon} href={i.href} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-white/10 hover:border-white/30 flex items-center justify-center text-white/55 hover:text-white">
                 <Icon name={i.icon} size={14} />
               </a>
             ))}
+            <a href="https://youtu.be/AiHgYlBylVo" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-white/10 hover:border-rose-500/40 hover:text-rose-400 flex items-center justify-center text-white/55 hover:text-white transition" title="Watch demo on YouTube">
+              <Icon name="youtube" size={14} />
+            </a>
+            <a href="/faq" className="h-9 px-3 rounded-full border border-white/10 hover:border-white/30 flex items-center gap-1.5 text-white/55 hover:text-white text-[12px] font-mono transition">
+              <Icon name="help-circle" size={14} /> FAQ
+            </a>
+            <a href="/docs" className="h-9 px-3 rounded-full border border-white/10 hover:border-white/30 flex items-center gap-1.5 text-white/55 hover:text-white text-[12px] font-mono transition">
+              <Icon name="book-open" size={14} /> Docs
+            </a>
           </div>
         </div>
 
