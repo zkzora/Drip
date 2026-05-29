@@ -1,8 +1,10 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { Icon } from "@/components/ui/Icon";
+import Waitlist from "@/components/landing/Waitlist";
+import { AnimatedGridBackground } from "@/components/ui/backgrounds";
 import {
   CALCULATOR_DEMO,
   DEV_CODE_SAMPLE,
@@ -182,12 +184,38 @@ function BackdropStreamLines() {
 }
 
 // =========================================================================
-// Atmospheric background
+// Atmospheric background - Enhanced with 21st.dev inspiration
 // =========================================================================
 function Backdrop() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-grid opacity-60" />
+      {/* Enhanced grid with multiple gradients */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(167,139,250,0.08) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(167,139,250,0.08) 1px, transparent 1px),
+            radial-gradient(circle 900px at 100% 200px, rgba(213,197,255,0.15), transparent),
+            radial-gradient(circle 700px at 0% 400px, rgba(167,139,250,0.12), transparent),
+            radial-gradient(circle 800px at 50% 100%, rgba(103,232,249,0.10), transparent)
+          `,
+          backgroundSize: "96px 64px, 96px 64px, 100% 100%, 100% 100%, 100% 100%",
+        }}
+      />
+
+      {/* Complex multiplier pattern overlay */}
+      <div
+        className="absolute inset-0 opacity-40"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(45deg, rgba(167,139,250,0.04) 0, rgba(167,139,250,0.04) 1px, transparent 1px, transparent 20px),
+            repeating-linear-gradient(-45deg, rgba(217,70,239,0.04) 0, rgba(217,70,239,0.04) 1px, transparent 1px, transparent 30px)
+          `,
+          backgroundSize: "40px 40px, 60px 60px",
+        }}
+      />
+
       <div className="absolute inset-0 bg-noise" />
 
       {/* Aurora orbs — pure CSS animation, no JS scroll listener */}
@@ -1124,10 +1152,10 @@ function FinalCTA() {
               </div>
               <div className="mt-8 flex items-center justify-center gap-6 text-[11.5px] font-mono text-white/35">
                 {FINAL_CTA_STATS.map((stat, index) => (
-                  <>
+                  <React.Fragment key={stat}>
                     {index > 0 && <span>·</span>}
-                    <span key={stat}>{stat}</span>
-                  </>
+                    <span>{stat}</span>
+                  </React.Fragment>
                 ))}
               </div>
             </div>
@@ -1210,6 +1238,7 @@ export default function LandingPage() {
       <Developers />
       <Ecosystem />
       <FinalCTA />
+      <Waitlist />
       <Footer />
     </div>
   );

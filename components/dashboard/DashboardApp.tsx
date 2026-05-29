@@ -1,11 +1,14 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Icon } from "@/components/ui/Icon";
+import { DashboardBackground } from "@/components/ui/backgrounds";
 
 const CompliancePage = dynamic(() => import("@/components/compliance/CompliancePage"), { ssr: false });
+import { StellarStreamPanel } from "@/components/streams/StellarStreamPanel";
 import { useDripWallet } from "@/lib/solana/useDripWallet";
+import { useFreighterWallet } from "@/lib/stellar/useFreighterWallet";
 import { useDripStreams } from "@/lib/solana/useDripStreams";
 import BN from "bn.js";
 import { PublicKey } from "@solana/web3.js";
@@ -132,10 +135,7 @@ function SolAvatar({ seed = "x", size = 32 }: any) {
 function Backdrop() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-grid opacity-50" />
-      <div className="absolute -top-40 left-[40%] w-[900px] h-[600px] glow-orb opacity-50" />
-      <div className="absolute top-[30%] right-[-10%] w-[400px] h-[400px] iri-orb rounded-full opacity-30 drift-slow" />
-      <div className="absolute inset-0" style={{ background: "radial-gradient(80% 60% at 50% 0%, transparent 40%, rgba(0,0,0,0.7) 100%)" }} />
+      <DashboardBackground />
     </div>
   );
 }
@@ -187,7 +187,7 @@ function Sidebar({ active, onChange, streams }: any) {
   );
 }
 
-function Topbar({ route, onNewStream }: any) {
+function Topbar({ route, onNewStream, streamChain, freighter }: any) {
   const { connected, connecting, publicKeyString, connect, disconnect, providerName } = useDripWallet();
   const walletLabel = connected ? shortWalletAddress(publicKeyString) : connecting ? "Connecting..." : "Connect";
   const walletMeta = connected ? providerName ?? "Solana wallet" : "Solana signer";
@@ -195,6 +195,28 @@ function Topbar({ route, onNewStream }: any) {
   const handleWalletClick = () => {
     if (connected) { void disconnect?.(); return; }
     void connect?.();
+  };
+
+  const isStellar = streamChain === "stellar-testnet";
+
+  const stellarLabel = freighter?.connecting
+    ? "Connecting..."
+    : freighter?.connected && freighter.address
+    ? `${freighter.address.slice(0, 4)}...${freighter.address.slice(-4)}`
+    : !freighter?.available
+    ? "Install Freighter"
+    : "Connect Freighter";
+  const stellarMeta = freighter?.connected
+    ? freighter.network ?? "Stellar Testnet"
+    : "Stellar signer";
+
+  const handleStellarClick = () => {
+    if (!freighter?.available) {
+      window.open("https://freighter.app", "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (freighter?.connected) { freighter.disconnect(); return; }
+    void freighter?.connect();
   };
 
   return (
@@ -214,17 +236,33 @@ function Topbar({ route, onNewStream }: any) {
           <button className="hidden sm:flex btn-ghost rounded-full w-9 h-9 items-center justify-center text-white/60 hover:text-white">
             <Icon name="bell" size={14} />
           </button>
-          <button onClick={onNewStream} className="btn-primary rounded-full px-2.5 sm:px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
-            <Icon name="plus" size={14} />
-            <span className="hidden sm:inline">New stream</span>
-          </button>
-          <button onClick={handleWalletClick} className="flex items-center gap-1.5 pl-1.5 pr-2 sm:pr-3 py-1 rounded-full border border-white/10 hover:border-violet-400/30 transition">
-            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 shrink-0" />
-            <div className="text-left leading-tight hidden sm:block">
-              <div className="text-[12px] text-white">{walletLabel}</div>
-              <div className="text-[10px] font-mono text-white/45">{walletMeta}</div>
-            </div>
-          </button>
+          {!isStellar && (
+            <button onClick={onNewStream} className="btn-primary rounded-full px-2.5 sm:px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
+              <Icon name="plus" size={14} />
+              <span className="hidden sm:inline">New stream</span>
+            </button>
+          )}
+          {isStellar ? (
+            <button
+              onClick={handleStellarClick}
+              disabled={freighter?.connecting}
+              className={`flex items-center gap-1.5 pl-1.5 pr-2 sm:pr-3 py-1 rounded-full border border-white/10 hover:border-sky-400/30 transition ${freighter?.connecting ? "opacity-60 cursor-not-allowed" : ""}`}
+            >
+              <span className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500 shrink-0" />
+              <div className="text-left leading-tight hidden sm:block">
+                <div className="text-[12px] text-white">{stellarLabel}</div>
+                <div className="text-[10px] font-mono text-white/45">{stellarMeta}</div>
+              </div>
+            </button>
+          ) : (
+            <button onClick={handleWalletClick} className="flex items-center gap-1.5 pl-1.5 pr-2 sm:pr-3 py-1 rounded-full border border-white/10 hover:border-violet-400/30 transition">
+              <span className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 shrink-0" />
+              <div className="text-left leading-tight hidden sm:block">
+                <div className="text-[12px] text-white">{walletLabel}</div>
+                <div className="text-[10px] font-mono text-white/45">{walletMeta}</div>
+              </div>
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -525,7 +563,7 @@ function FlowSparkline({ net }: any) {
 // =========================================================================
 // STREAMS page
 // =========================================================================
-function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequireWallet, streamsLoading, streamsError, onRefresh, onWithdraw, onPause, onResume, onCancelStream, streamActions }: any) {
+function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequireWallet, streamsLoading, streamsError, onRefresh, onWithdraw, onPause, onResume, onCancelStream, streamActions, streamChain, onChainChange, freighter }: any) {
   const [filter, setFilter] = useState("all");
   const [topUpId, setTopUpId] = useState<string | null>(null);
 
@@ -557,98 +595,111 @@ function StreamsPage({ streams, setStreams, onNewStream, walletConnected, onRequ
       <PageHeader
         eyebrow="02 - Streams"
         title={<>Manage every drop.</>}
-        sub="Pause, resume, cancel or top up any active stream. Counters tick in real time, settled every Solana block."
+        sub="Create and manage streams on Solana Devnet and Stellar Testnet. Each chain is isolated — no bridge, no shared liquidity."
         right={
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 p-1 rounded-full border border-white/10 bg-white/[0.02]">
-              {STREAM_FILTERS.map((filterOption) => {
-                const t = {
-                  ...filterOption,
-                  n:
-                    filterOption.k === "all"
-                      ? streams.length
-                      : filterOption.k === "paused"
-                        ? streams.filter((s) => s.status === "paused").length
-                        : streams.filter((s) => s.dir === filterOption.k).length,
-                };
-                return (
-                <button
-                  key={t.k}
-                  onClick={() => setFilter(t.k)}
-                  className={`px-3 py-1.5 rounded-full text-[12px] border transition ${filter === t.k ? "tab-active" : "border-transparent text-white/55 hover:text-white"}`}
-                >
-                  {t.l} <span className="text-white/40 ml-0.5">{t.n}</span>
-                </button>
-              );})}
+          streamChain === "solana-devnet" ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 p-1 rounded-full border border-white/10 bg-white/[0.02]">
+                {STREAM_FILTERS.map((filterOption) => {
+                  const t = {
+                    ...filterOption,
+                    n:
+                      filterOption.k === "all"
+                        ? streams.length
+                        : filterOption.k === "paused"
+                          ? streams.filter((s) => s.status === "paused").length
+                          : streams.filter((s) => s.dir === filterOption.k).length,
+                  };
+                  return (
+                  <button
+                    key={t.k}
+                    onClick={() => setFilter(t.k)}
+                    className={`px-3 py-1.5 rounded-full text-[12px] border transition ${filter === t.k ? "tab-active" : "border-transparent text-white/55 hover:text-white"}`}
+                  >
+                    {t.l} <span className="text-white/40 ml-0.5">{t.n}</span>
+                  </button>
+                );})}
+              </div>
+              <button onClick={onNewStream} className="btn-primary rounded-full px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
+                <Icon name="plus" size={13} /> New stream
+              </button>
             </div>
-            <button onClick={onNewStream} className="btn-primary rounded-full px-4 py-2 text-[13px] font-medium text-white flex items-center gap-1.5">
-              <Icon name="plus" size={13} /> New stream
-            </button>
-          </div>
+          ) : null
         }
       />
 
-      {streamsError && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 py-3 flex items-center gap-3">
-          <Icon name="triangle-alert" size={14} className="text-rose-300 shrink-0" />
-          <span className="text-[12.5px] text-rose-200 flex-1 font-mono break-all">{streamsError}</span>
-          <button onClick={onRefresh} className="btn-ghost rounded-full px-3 py-1.5 text-[12px] text-white/85 flex items-center gap-1.5 shrink-0">
-            <Icon name="refresh-cw" size={12} /> Retry
-          </button>
-        </div>
-      )}
+      {/* Chain selector */}
+      <ChainSelector chain={streamChain} onChange={onChainChange} />
 
-      {streamsLoading && (
-        <div className="flex items-center gap-2 text-[12.5px] font-mono text-violet-300/80">
-          <span className="inline-block w-3 h-3 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
-          Fetching streams from chain...
-        </div>
-      )}
+      {/* ── Stellar Testnet tab ── */}
+      {streamChain === "stellar-testnet" && <StellarStreamPanel freighter={freighter} />}
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {visible.length === 0 && !streamsLoading && (
-          <div className="col-span-full rounded-2xl border border-white/8 bg-white/[0.02] p-12 text-center">
-            <div className="w-12 h-12 rounded-full bg-violet-400/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="waves" size={20} className="text-violet-300/60" />
-            </div>
-            <div className="text-[15px] text-white/60">No real streams yet</div>
-            <div className="mt-1.5 text-[12.5px] font-mono text-white/35">
-              {walletConnected ? "Create your first programmable cashflow stream." : "Connect a wallet to see your on-chain streams."}
-            </div>
-            {walletConnected && (
-              <button onClick={onNewStream} className="mt-5 btn-primary rounded-full px-5 py-2.5 text-[13px] font-medium text-white inline-flex items-center gap-2">
-                <Icon name="plus" size={13} /> New stream
+      {/* ── Solana Devnet tab ── */}
+      {streamChain === "solana-devnet" && (
+        <>
+          {streamsError && (
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 py-3 flex items-center gap-3">
+              <Icon name="triangle-alert" size={14} className="text-rose-300 shrink-0" />
+              <span className="text-[12.5px] text-rose-200 flex-1 font-mono break-all">{streamsError}</span>
+              <button onClick={onRefresh} className="btn-ghost rounded-full px-3 py-1.5 text-[12px] text-white/85 flex items-center gap-1.5 shrink-0">
+                <Icon name="refresh-cw" size={12} /> Retry
               </button>
-            )}
-          </div>
-        )}
-        {visible.map((s) => {
-          const isMock = !s.publicKey;
-          return (
-            <StreamCard
-              key={s.id}
-              stream={s}
-              walletConnected={walletConnected}
-              isMock={isMock}
-              actionState={isMock ? null : (streamActions?.[s.id] ?? null)}
-              onWithdraw={() => onWithdraw?.(s)}
-              onPause={() => onPause?.(s)}
-              onResume={() => onResume?.(s)}
-              onCancelReal={() => onCancelStream?.(s)}
-              onToggle={() => guardWallet("Connect a wallet before pausing or resuming a stream.", () => toggle(s.id))}
-              onCancelMock={() => guardWallet("Connect a wallet before cancelling a stream.", () => cancel(s.id))}
-              onTopUp={() => guardWallet("Connect a wallet before topping up a stream.", () => setTopUpId(s.id))}
-            />
-          );
-        })}
-      </div>
+            </div>
+          )}
 
-      {topUpId && (
-        <TopUpModal
-          stream={streams.find(s => s.id === topUpId)}
-          onClose={() => setTopUpId(null)}
-          onSubmit={(amt) => guardWallet("Connect a wallet before topping up a stream.", () => { topUp(topUpId, amt); setTopUpId(null); })}
-        />
+          {streamsLoading && (
+            <div className="flex items-center gap-2 text-[12.5px] font-mono text-violet-300/80">
+              <span className="inline-block w-3 h-3 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+              Fetching streams from chain...
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {visible.length === 0 && !streamsLoading && (
+              <div className="col-span-full rounded-2xl border border-white/8 bg-white/[0.02] p-12 text-center">
+                <div className="w-12 h-12 rounded-full bg-violet-400/10 flex items-center justify-center mx-auto mb-4">
+                  <Icon name="waves" size={20} className="text-violet-300/60" />
+                </div>
+                <div className="text-[15px] text-white/60">No real streams yet</div>
+                <div className="mt-1.5 text-[12.5px] font-mono text-white/35">
+                  {walletConnected ? "Create your first programmable cashflow stream." : "Connect a wallet to see your on-chain streams."}
+                </div>
+                {walletConnected && (
+                  <button onClick={onNewStream} className="mt-5 btn-primary rounded-full px-5 py-2.5 text-[13px] font-medium text-white inline-flex items-center gap-2">
+                    <Icon name="plus" size={13} /> New stream
+                  </button>
+                )}
+              </div>
+            )}
+            {visible.map((s) => {
+              const isMock = !s.publicKey;
+              return (
+                <StreamCard
+                  key={s.id}
+                  stream={s}
+                  walletConnected={walletConnected}
+                  isMock={isMock}
+                  actionState={isMock ? null : (streamActions?.[s.id] ?? null)}
+                  onWithdraw={() => onWithdraw?.(s)}
+                  onPause={() => onPause?.(s)}
+                  onResume={() => onResume?.(s)}
+                  onCancelReal={() => onCancelStream?.(s)}
+                  onToggle={() => guardWallet("Connect a wallet before pausing or resuming a stream.", () => toggle(s.id))}
+                  onCancelMock={() => guardWallet("Connect a wallet before cancelling a stream.", () => cancel(s.id))}
+                  onTopUp={() => guardWallet("Connect a wallet before topping up a stream.", () => setTopUpId(s.id))}
+                />
+              );
+            })}
+          </div>
+
+          {topUpId && (
+            <TopUpModal
+              stream={streams.find(s => s.id === topUpId)}
+              onClose={() => setTopUpId(null)}
+              onSubmit={(amt) => guardWallet("Connect a wallet before topping up a stream.", () => { topUp(topUpId, amt); setTopUpId(null); })}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -1191,9 +1242,39 @@ function HistoryRow({ h }: any) {
 }
 
 // =========================================================================
+// STELLAR STREAM PANEL — moved to components/streams/StellarStreamPanel.tsx
+// Import at top of file; rendered in StreamsPage → Stellar Testnet tab.
+// =========================================================================
+
+
+// =========================================================================
 // AGENTS page
 // =========================================================================
-function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingMockData = true }: any) {
+function ChainSelector({ chain, onChange }: { chain: "solana-devnet" | "stellar-testnet"; onChange: (c: "solana-devnet" | "stellar-testnet") => void }) {
+  const options: { id: "solana-devnet" | "stellar-testnet"; label: string }[] = [
+    { id: "solana-devnet", label: "Solana Devnet" },
+    { id: "stellar-testnet", label: "Stellar Testnet" },
+  ];
+  return (
+    <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] p-1">
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          onClick={() => onChange(opt.id)}
+          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
+            chain === opt.id
+              ? "bg-violet-500/20 text-violet-200 border border-violet-400/30"
+              : "text-white/45 hover:text-white/70"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingMockData = true, onGoToStreams }: any) {
   const [log, setLog] = useState<any[]>([]);
   const [paused, setPaused] = useState(false);
 
@@ -1281,6 +1362,23 @@ function AgentsPage({ streams = [], walletConnected = false, onNewStream, usingM
         <YieldStat icon="layers" label="Session spend" value={`${fmtUSD(totalSpent, 4)} SOL`} sub="demo simulation" tone="up" />
         <YieldStat icon="activity" label="Settlements" value={`${log.length * 24 + AGENT_LOG_DEMO.baseSettlements}`} sub="last hour" />
       </section>
+
+      {/* Streams link — create and manage from the Streams page */}
+      <div className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-violet-400/10 text-violet-200 flex items-center justify-center shrink-0">
+          <Icon name="waves" size={14} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] text-white">Create or manage streams</div>
+          <div className="text-[11px] font-mono text-white/40">Solana Devnet and Stellar Testnet streams are managed from the Streams page.</div>
+        </div>
+        <button
+          onClick={onGoToStreams}
+          className="shrink-0 btn-ghost rounded-full px-3.5 py-1.5 text-[12px] text-violet-200 border border-violet-400/25 hover:border-violet-400/50 flex items-center gap-1.5"
+        >
+          <Icon name="waves" size={12} /> Manage streams
+        </button>
+      </div>
 
       {/* Demo-mode quick-create CTA */}
       {!isRealStream && (
@@ -1902,6 +2000,8 @@ export default function DashboardApp() {
   const [streamActions, setStreamActions] = useState<Record<string, { pending: string | null; txSig: string | null; error: string | null }>>({});
   const inFlightRef = useRef<Set<string>>(new Set());
   const [cancelConfirm, setCancelConfirm] = useState<any | null>(null);
+  const [streamChain, setStreamChain] = useState<"solana-devnet" | "stellar-testnet">("solana-devnet");
+  const freighter = useFreighterWallet();
   const { connected, connect, wallet, publicKey, error: walletError } = useDripWallet();
 
   useEffect(() => {
@@ -1925,13 +2025,18 @@ export default function DashboardApp() {
   const [drawerPrefill, setDrawerPrefill] = useState<any>(null);
 
   const openNewStream = useCallback(() => {
+    // If Stellar tab is active, navigate to Streams/Stellar — no Solana drawer
+    if (streamChain === "stellar-testnet") {
+      setRoute("streams");
+      return;
+    }
     if (!requireWallet("Connect a wallet before creating a stream.")) return;
     setDrawerPrefill(null);
     setTxStatus("idle");
     setTxSig(null);
     setTxError(null);
     setDrawer(true);
-  }, [requireWallet]);
+  }, [streamChain, requireWallet]);
 
   const openAgentStream = useCallback(() => {
     if (!requireWallet("Connect a wallet to create an agent stream.")) return;
@@ -2165,7 +2270,7 @@ export default function DashboardApp() {
       <Backdrop />
       <Sidebar active={route} onChange={handleRouteChange} streams={streams} />
       <div className="flex-1 min-w-0">
-        <Topbar route={route} onNewStream={openNewStream} />
+        <Topbar route={route} onNewStream={openNewStream} streamChain={streamChain} freighter={freighter} />
         <MobileBottomNav active={route} onChange={handleRouteChange} />
         <main className="px-4 py-5 sm:px-8 sm:py-7 max-w-[1480px] pb-24 lg:pb-10">
           {walletPrompt && !connected && (
@@ -2189,10 +2294,10 @@ export default function DashboardApp() {
           )}
           <RouteTransition k={route}>
             {route === "dashboard" && <DashboardPage streams={streams} onNewStream={openNewStream} onGoTo={setRoute} walletConnected={connected} walletError={walletError} onConnectWallet={connectWallet} onRequireWallet={requireWallet} />}
-            {route === "streams"   && <StreamsPage   streams={streams} setStreams={setStreams} onNewStream={openNewStream} walletConnected={connected} onRequireWallet={requireWallet} streamsLoading={streamsLoading} streamsError={streamsError} onRefresh={refreshStreams} onWithdraw={handleWithdraw} onPause={handlePause} onResume={handleResume} onCancelStream={handleCancelStream} streamActions={streamActions} />}
+            {route === "streams"   && <StreamsPage   streams={streams} setStreams={setStreams} onNewStream={openNewStream} walletConnected={connected} onRequireWallet={requireWallet} streamsLoading={streamsLoading} streamsError={streamsError} onRefresh={refreshStreams} onWithdraw={handleWithdraw} onPause={handlePause} onResume={handleResume} onCancelStream={handleCancelStream} streamActions={streamActions} streamChain={streamChain} onChainChange={setStreamChain} freighter={freighter} />}
             {route === "yield"     && <YieldPage     streams={streams} walletConnected={connected} onRequireWallet={requireWallet} />}
             {route === "history"   && <HistoryPage />}
-            {route === "agents"    && <AgentsPage streams={streams} walletConnected={connected} onNewStream={openAgentStream} usingMockData={usingMockData} />}
+            {route === "agents"    && <AgentsPage streams={streams} walletConnected={connected} onNewStream={openAgentStream} usingMockData={usingMockData} onGoToStreams={() => setRoute("streams")} />}
             {route === "reports"   && <CompliancePage />}
             {route === "settings"  && <SettingsPage />}
           </RouteTransition>

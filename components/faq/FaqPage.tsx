@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { DocsBackground } from "@/components/ui/backgrounds";
 
 const CATEGORIES = [
   { id: "general",   label: "General",      icon: "layers" },
@@ -246,12 +247,9 @@ export default function FaqPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070612]">
+    <div className="min-h-screen bg-[#070612] relative">
       {/* Backdrop */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-40" />
-        <div className="absolute -top-40 left-[30%] w-[700px] h-[500px] glow-orb opacity-30" />
-      </div>
+      <DocsBackground />
 
       {/* Top nav */}
       <header className="sticky top-0 z-40 backdrop-blur-md border-b border-white/5 bg-[#070612]/75">

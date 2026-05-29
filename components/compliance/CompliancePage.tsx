@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { MinimalGridBackground } from "@/components/ui/backgrounds";
 import {
   COMPLIANCE_CATEGORY_FILTERS,
   COMPLIANCE_CATEGORY_ICON,
@@ -263,7 +264,8 @@ export default function CompliancePage() {
   const csvRowCount = !usingMockData ? realRecords.length : filtered.length;
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-7 relative">
+      <MinimalGridBackground />
       <PageHeader
         eyebrow="07 - Reports & Compliance"
         title={<>Audit-ready, in three clicks.</>}

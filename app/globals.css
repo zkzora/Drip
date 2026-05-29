@@ -530,6 +530,70 @@ body {
 
 /* ── end premium motion layer ────────────────────────────────────────────── */
 
+/* ── Micro-interactions (waitlist + global polish) ──────────────────────── */
+
+/* Button press feedback — kept minimal so layout never shifts */
+.btn-primary:active { transform: scale(0.985); }
+.btn-ghost:active   { transform: scale(0.985); }
+.btn-primary, .btn-ghost { transition: filter 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.12s ease; }
+
+/* Waitlist input — focus glow that matches DRIP accent */
+.waitlist-input { transition: border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease; }
+.waitlist-input:focus-visible {
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.06);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.14), 0 0 18px -6px rgba(129, 68, 238, 0.4);
+}
+.waitlist-input:hover:not(:disabled):not(:focus-visible) {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Status message fade — used by the waitlist form for joined / error */
+@keyframes statusIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-status { animation: statusIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Spinner used by the waitlist button (lucide loader-2) */
+@keyframes dripSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-spin { animation: dripSpin 0.85s linear infinite; }
+
+/* ── Reduced motion: respect the user setting ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Reveal helpers — show content immediately instead of sliding in */
+  .reveal,
+  .reveal-left,
+  .reveal-right,
+  .reveal-scale,
+  .stagger-children > * {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  /* Decorative ambient motion off */
+  .drift-slow, .drift-med, .aurora-1, .aurora-2, .aurora-3,
+  .shimmer, .flow-dash, .pulse-dot, .cursor-blink {
+    animation: none !important;
+  }
+}
+/* ── end micro-interactions ─────────────────────────────────────────────── */
+
 ::selection {
   background: rgba(167, 139, 250, 0.5);
   color: white;

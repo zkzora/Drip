@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DOCS_NAV, DOCS_PAGES, type DocPage, type DocSection } from "@/lib/docs-content";
 import { Icon } from "@/components/ui/Icon";
+import { DocsBackground } from "@/components/ui/backgrounds";
 
 function TopBar() {
   return (
@@ -304,11 +305,8 @@ function NextPrevious({ page }: { page: DocPage }) {
 
 export default function DocsPage({ page }: { page: DocPage }) {
   return (
-    <div className="min-h-screen bg-[#070612]">
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-40" />
-        <div className="absolute -top-48 left-[32%] h-[520px] w-[720px] glow-orb opacity-25" />
-      </div>
+    <div className="min-h-screen bg-[#070612] relative">
+      <DocsBackground />
 
       <TopBar />
 
